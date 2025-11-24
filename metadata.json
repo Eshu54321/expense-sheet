@@ -1,0 +1,5 @@
+{
+  "name": "ExpenseSheet AI",
+  "description": "A professional, spreadsheet-style personal expense tracker powered by Gemini AI for smart data entry and financial insights.",
+  "requestFramePermissions": []
+}
