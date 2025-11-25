@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Trash2, Plus, Save } from 'lucide-react';
+import { Trash2, Edit2, Save, X, Check } from 'lucide-react';
 import { Expense, Category, FilterConfig } from '../types';
 import { ExpenseFilters } from './ExpenseFilters';
 import { COLORS } from '../constants';
@@ -9,14 +9,6 @@ interface ExpenseTableProps {
   onDelete: (id: string) => void;
   onUpdate: (updatedExpense: Expense) => void;
 }
-
-const COLUMNS = [
-  { label: 'A', key: 'date', width: '120px' },
-  { label: 'B', key: 'description', width: '250px' },
-  { label: 'C', key: 'category', width: '180px' },
-  { label: 'D', key: 'paymentMethod', width: '150px' },
-  { label: 'E', key: 'amount', width: '120px' },
-];
 
 const INITIAL_FILTERS: FilterConfig = {
   search: '',
@@ -33,6 +25,8 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({ expenses, onDelete, 
   const [localExpenses, setLocalExpenses] = useState<Expense[]>(expenses);
   const [filters, setFilters] = useState<FilterConfig>(INITIAL_FILTERS);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Expense | null>(null);
 
   useEffect(() => {
     setLocalExpenses(expenses);
@@ -44,22 +38,33 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({ expenses, onDelete, 
     return Array.from(methods).filter(Boolean).sort();
   }, [expenses]);
 
-  const handleCellChange = (id: string, key: keyof Expense, value: string) => {
-    setLocalExpenses(prev => prev.map(e => {
-      if (e.id === id) {
-        // Handle amount conversion
-        if (key === 'amount') {
-          const num = parseFloat(value);
-          return { ...e, [key]: isNaN(num) ? 0 : num };
-        }
-        return { ...e, [key]: value };
-      }
-      return e;
-    }));
+  const handleEditClick = (expense: Expense) => {
+    setEditingId(expense.id);
+    setEditForm({ ...expense });
   };
 
-  const handleBlur = (expense: Expense) => {
-    onUpdate(expense);
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditForm(null);
+  };
+
+  const handleSaveEdit = () => {
+    if (editForm) {
+      onUpdate(editForm);
+      setEditingId(null);
+      setEditForm(null);
+    }
+  };
+
+  const handleInputChange = (key: keyof Expense, value: string) => {
+    if (!editForm) return;
+
+    if (key === 'amount') {
+      const num = parseFloat(value);
+      setEditForm({ ...editForm, [key]: isNaN(num) ? 0 : num });
+    } else {
+      setEditForm({ ...editForm, [key]: value });
+    }
   };
 
   const getCategoryColor = (category: string) => {
@@ -72,17 +77,17 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({ expenses, onDelete, 
     return localExpenses.filter(expense => {
       // Search
       if (filters.search && !expense.description.toLowerCase().includes(filters.search.toLowerCase())) return false;
-      
+
       // Category
       if (filters.category && expense.category !== filters.category) return false;
 
       // Payment Method
       if (filters.paymentMethod && expense.paymentMethod !== filters.paymentMethod) return false;
-      
+
       // Date Range
       if (filters.startDate && expense.date < filters.startDate) return false;
       if (filters.endDate && expense.date > filters.endDate) return false;
-      
+
       // Type
       if (filters.type === 'income' && expense.amount >= 0) return false;
       // if type is 'expense', we want positive amounts.
@@ -99,8 +104,8 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({ expenses, onDelete, 
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-[calc(100vh-220px)] md:h-[700px] overflow-hidden">
-      
-      <ExpenseFilters 
+
+      <ExpenseFilters
         filters={filters}
         onFilterChange={setFilters}
         isOpen={isFilterOpen}
@@ -110,134 +115,165 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({ expenses, onDelete, 
       />
 
       {/* Toolbar */}
-      <div className="p-2 border-b border-slate-200 bg-slate-50 flex items-center gap-2 overflow-x-auto">
-        <div className="text-slate-500 text-sm font-medium px-2 flex items-center gap-1 whitespace-nowrap">
-          <span className="w-2 h-2 md:w-3 md:h-3 bg-green-500 rounded-full"></span>
-          <span className="hidden md:inline">Sheet Mode: Auto-saved to Local Database</span>
-          <span className="md:hidden text-xs">Auto-saved</span>
+      <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="text-slate-500 text-sm font-medium flex items-center gap-2">
+          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+          <span>{filteredExpenses.length} Records</span>
         </div>
-        <div className="flex-1"></div>
-        <div className="text-xs text-slate-400 mr-2 md:mr-4 whitespace-nowrap">
-           {filteredExpenses.length} records
-        </div>
-        <button className="flex items-center gap-1 text-xs font-medium text-slate-600 bg-white border border-slate-300 px-3 py-1.5 rounded hover:bg-slate-50">
-          <Save className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">Saved</span>
-        </button>
       </div>
 
-      {/* Spreadsheet Grid */}
-      <div className="flex-grow overflow-auto custom-scrollbar relative bg-white">
-        <table className="text-left border-collapse table-fixed" style={{ minWidth: '820px' }}>
-          <thead className="bg-slate-100 sticky top-0 z-20 shadow-sm">
+      {/* Table */}
+      <div className="flex-grow overflow-auto custom-scrollbar bg-white">
+        <table className="w-full text-left border-collapse">
+          <thead className="bg-slate-50 sticky top-0 z-10">
             <tr>
-              <th className="w-10 border-b border-r border-slate-300 bg-slate-100 sticky left-0 z-30 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]"></th>
-              {COLUMNS.map((col) => (
-                <th key={col.key} style={{ width: col.width }} className="py-1 px-2 font-normal text-xs text-slate-500 text-center border-b border-r border-slate-300 bg-slate-100 select-none">
-                  {col.label}
-                </th>
-              ))}
-              <th className="w-12 border-b border-slate-300 bg-slate-100"></th>
+              <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 w-16">#</th>
+              <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 w-32">Date</th>
+              <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">Description</th>
+              <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 w-40">Category</th>
+              <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 w-32">Method</th>
+              <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right w-32">Amount</th>
+              <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-center w-24">Actions</th>
             </tr>
           </thead>
-          <tbody>
-            {filteredExpenses.map((expense, index) => (
-              <tr key={expense.id} className="hover:bg-blue-50/20 group">
-                {/* Row Number (Visual Index) */}
-                <td className="w-10 text-center text-xs text-slate-500 bg-slate-50 border-r border-b border-slate-200 sticky left-0 z-10 select-none shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                  {index + 1}
-                </td>
-                
-                {/* Date */}
-                <td className="border-r border-b border-slate-200 p-0">
-                  <input 
-                    type="text" 
-                    value={expense.date} 
-                    onChange={(e) => handleCellChange(expense.id, 'date', e.target.value)}
-                    onBlur={() => handleBlur(expense)}
-                    className="w-full h-full py-3 md:py-2 px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-blue-50 transition-all border-none bg-transparent"
-                  />
-                </td>
+          <tbody className="divide-y divide-slate-100">
+            {filteredExpenses.map((expense, index) => {
+              const isEditing = editingId === expense.id;
 
-                {/* Description */}
-                <td className="border-r border-b border-slate-200 p-0">
-                  <input 
-                    type="text" 
-                    value={expense.description} 
-                    onChange={(e) => handleCellChange(expense.id, 'description', e.target.value)}
-                    onBlur={() => handleBlur(expense)}
-                    className="w-full h-full py-3 md:py-2 px-3 text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-blue-50 transition-all border-none bg-transparent"
-                  />
-                </td>
+              return (
+                <tr key={expense.id} className={`hover:bg-slate-50 transition-colors ${isEditing ? 'bg-blue-50/30' : ''}`}>
+                  {/* Index */}
+                  <td className="py-3 px-4 text-sm text-slate-400">
+                    {index + 1}
+                  </td>
 
-                {/* Category */}
-                <td className="border-r border-b border-slate-200 p-0 relative">
-                   <div 
-                      className="absolute left-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full pointer-events-none z-10"
-                      style={{ backgroundColor: getCategoryColor(expense.category) }}
-                   />
-                   <select
-                      value={expense.category}
-                      onChange={(e) => {
-                          handleCellChange(expense.id, 'category', e.target.value);
-                          const updated = { ...expense, category: e.target.value };
-                          handleBlur(updated);
-                      }}
-                      className="w-full h-full py-3 md:py-2 pl-7 pr-3 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-blue-50 transition-all border-none bg-transparent appearance-none cursor-pointer relative z-0"
-                   >
-                     {Object.values(Category).map(c => (
-                       <option key={c} value={c}>{c}</option>
-                     ))}
-                   </select>
-                </td>
-
-                {/* Method */}
-                <td className="border-r border-b border-slate-200 p-0">
-                  <input 
-                    type="text" 
-                    value={expense.paymentMethod} 
-                    onChange={(e) => handleCellChange(expense.id, 'paymentMethod', e.target.value)}
-                    onBlur={() => handleBlur(expense)}
-                    className="w-full h-full py-3 md:py-2 px-3 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-blue-50 transition-all border-none bg-transparent"
-                  />
-                </td>
-
-                {/* Amount */}
-                <td className="border-r border-b border-slate-200 p-0">
-                   <div className="relative h-full">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-light">₹</span>
-                      <input 
-                        type="number" 
-                        value={expense.amount} 
-                        onChange={(e) => handleCellChange(expense.id, 'amount', e.target.value)}
-                        onBlur={() => handleBlur(expense)}
-                        className={`w-full h-full py-3 md:py-2 pl-6 pr-3 text-sm font-mono text-right focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-blue-50 transition-all border-none bg-transparent ${expense.amount < 0 ? 'text-green-600' : 'text-slate-800'}`}
+                  {/* Date */}
+                  <td className="py-3 px-4 text-sm text-slate-600">
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        value={editForm?.date}
+                        onChange={(e) => handleInputChange('date', e.target.value)}
+                        className="w-full p-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       />
-                   </div>
-                </td>
+                    ) : (
+                      expense.date
+                    )}
+                  </td>
 
-                {/* Action */}
-                <td className="border-b border-slate-200 p-0 text-center w-12 bg-white">
-                  <button 
-                    onClick={() => onDelete(expense.id)}
-                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  {/* Description */}
+                  <td className="py-3 px-4 text-sm font-medium text-slate-800">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editForm?.description}
+                        onChange={(e) => handleInputChange('description', e.target.value)}
+                        className="w-full p-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                    ) : (
+                      expense.description
+                    )}
+                  </td>
+
+                  {/* Category */}
+                  <td className="py-3 px-4">
+                    {isEditing ? (
+                      <select
+                        value={editForm?.category}
+                        onChange={(e) => handleInputChange('category', e.target.value)}
+                        className="w-full p-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      >
+                        {Object.values(Category).map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                        <span className="w-1.5 h-1.5 rounded-full mr-1.5" style={{ backgroundColor: getCategoryColor(expense.category) }}></span>
+                        {expense.category}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Method */}
+                  <td className="py-3 px-4 text-sm text-slate-500">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editForm?.paymentMethod}
+                        onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
+                        className="w-full p-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                    ) : (
+                      expense.paymentMethod
+                    )}
+                  </td>
+
+                  {/* Amount */}
+                  <td className={`py-3 px-4 text-sm font-mono text-right ${expense.amount < 0 ? 'text-green-600 font-semibold' : 'text-slate-700'}`}>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editForm?.amount}
+                        onChange={(e) => handleInputChange('amount', e.target.value)}
+                        className="w-full p-1 border border-slate-300 rounded text-sm text-right focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                    ) : (
+                      `₹${Math.abs(expense.amount).toFixed(2)}`
+                    )}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="py-3 px-4 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      {isEditing ? (
+                        <>
+                          <button
+                            onClick={handleSaveEdit}
+                            className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+                            title="Save"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleEditClick(expense)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onDelete(expense.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-        
-        {/* Empty State / Add Row Area */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50 text-center" style={{ minWidth: '820px' }}>
-            {filteredExpenses.length === 0 ? (
-                <p className="text-sm text-slate-400">No expenses match the current filters.</p>
-            ) : (
-                <p className="text-xs text-slate-400">End of Sheet</p>
-            )}
-        </div>
+
+        {filteredExpenses.length === 0 && (
+          <div className="p-8 text-center text-slate-400">
+            <p className="text-sm">No expenses found matching your filters.</p>
+          </div>
+        )}
       </div>
     </div>
   );

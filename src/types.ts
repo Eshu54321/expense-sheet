@@ -53,3 +53,33 @@ export interface RecurringExpense {
   nextDueDate: string; // YYYY-MM-DD
   active: boolean;
 }
+
+// --- Google Sheets Integration Types ---
+
+export interface GoogleUser {
+  id: string;
+  name: string;
+  email: string;
+  imageUrl: string;
+}
+
+export interface GoogleAuthState {
+  isSignedIn: boolean;
+  user: GoogleUser | null;
+  isInitialized: boolean;
+  error: string | null;
+}
+
+export interface SyncStatus {
+  lastSync: string | null; // ISO string
+  isSyncing: boolean;
+  pendingChanges: number;
+  error: string | null;
+}
+
+export interface SheetMetadata {
+  spreadsheetId: string;
+  spreadsheetUrl: string;
+  expenseSheetId: number;
+  recurringSheetId: number;
+}

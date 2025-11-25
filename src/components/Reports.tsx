@@ -1,16 +1,16 @@
-import React, { useState, useMemo } from 'react';
-import { Download, Calendar, TrendingUp, TrendingDown, BarChart2, List, Layers } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Download, Calendar, TrendingUp, TrendingDown, BarChart2, List, Layers, Loader2 } from 'lucide-react';
 import { Expense } from '../types';
-import { 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  CartesianGrid, 
-  Cell,
-  Legend
+import {
+    ResponsiveContainer,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    Tooltip,
+    CartesianGrid,
+    Cell,
+    Legend
 } from 'recharts';
 import { COLORS } from '../constants';
 
@@ -25,12 +25,18 @@ export const Reports: React.FC<ReportsProps> = ({ expenses }) => {
     const [dateRange, setDateRange] = useState<DateRange>('this_month');
     const [aggregation, setAggregation] = useState<Aggregation>('daily');
     const [viewMode, setViewMode] = useState<'transactions' | 'aggregated'>('transactions');
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsMounted(true), 100);
+        return () => clearTimeout(timer);
+    }, []);
 
     // 1. Filter Expenses by Date Range
     const filteredExpenses = useMemo(() => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
+
         let startDate = new Date(0); // Epoch
         let endDate = new Date(9999, 11, 31);
 
@@ -135,8 +141,8 @@ export const Reports: React.FC<ReportsProps> = ({ expenses }) => {
         let rows: string[][] = [];
 
         if (viewMode === 'transactions') {
-             headers = ['Date', 'Description', 'Category', 'Method', 'Amount'];
-             rows = filteredExpenses.map(e => [
+            headers = ['Date', 'Description', 'Category', 'Method', 'Amount'];
+            rows = filteredExpenses.map(e => [
                 e.date,
                 `"${e.description.replace(/"/g, '""')}"`,
                 e.category,
@@ -152,7 +158,7 @@ export const Reports: React.FC<ReportsProps> = ({ expenses }) => {
                 (d.income - d.expense).toString()
             ]);
         }
-        
+
         const csvContent = [
             headers.join(','),
             ...rows.map(r => r.join(','))
@@ -177,12 +183,12 @@ export const Reports: React.FC<ReportsProps> = ({ expenses }) => {
                     <h2 className="text-lg font-bold text-slate-800">Financial Reports</h2>
                     <p className="text-slate-500 text-sm">Analyze spending patterns over time</p>
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-3">
                     {/* Time Range */}
                     <div className="relative">
                         <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                        <select 
+                        <select
                             value={dateRange}
                             onChange={(e) => setDateRange(e.target.value as DateRange)}
                             className="pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none bg-white min-w-[140px]"
@@ -202,18 +208,17 @@ export const Reports: React.FC<ReportsProps> = ({ expenses }) => {
                             <button
                                 key={type}
                                 onClick={() => setAggregation(type)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${
-                                    aggregation === type 
-                                    ? 'bg-white text-slate-800 shadow-sm' 
-                                    : 'text-slate-500 hover:text-slate-700'
-                                }`}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${aggregation === type
+                                        ? 'bg-white text-slate-800 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                    }`}
                             >
                                 {type}
                             </button>
                         ))}
                     </div>
-                    
-                    <button 
+
+                    <button
                         onClick={handleDownload}
                         className="flex items-center space-x-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm font-medium ml-auto md:ml-0"
                     >
@@ -225,10 +230,10 @@ export const Reports: React.FC<ReportsProps> = ({ expenses }) => {
 
             {/* Charts & Summary Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
+
                 {/* Financial Summary */}
                 <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                     <div>
+                    <div>
                         <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-6">Summary</h3>
                         <div className="space-y-6">
                             <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-100">
@@ -250,74 +255,82 @@ export const Reports: React.FC<ReportsProps> = ({ expenses }) => {
                                 <span className="text-xl font-bold text-slate-800">₹{summary.income.toFixed(0)}</span>
                             </div>
                         </div>
-                     </div>
-                     <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-end">
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-end">
                         <span className="text-slate-500 font-medium">Net Balance</span>
                         <span className={`text-2xl font-bold ${summary.income - summary.expense >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {summary.income - summary.expense >= 0 ? '+' : ''}₹{(summary.income - summary.expense).toFixed(0)}
                         </span>
-                     </div>
+                    </div>
                 </div>
 
                 {/* Main Trend Chart */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                     <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-4">
                         <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Income vs Expense Trend</h3>
                         <span className="text-xs text-slate-400 capitalize">{aggregation} View</span>
-                     </div>
-                     <div className="h-[300px] w-full">
-                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={aggregatedData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis 
-                                    dataKey="label" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 12, fill: '#94a3b8'}}
-                                    minTickGap={30}
-                                />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 12, fill: '#94a3b8'}}
-                                    tickFormatter={(val) => `₹${val/1000}k`}
-                                />
-                                <Tooltip 
-                                    formatter={(value: number) => `₹${value.toFixed(2)}`}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                    cursor={{fill: '#f8fafc'}}
-                                />
-                                <Legend wrapperStyle={{paddingTop: '20px'}} />
-                                <Bar name="Income" dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                                <Bar name="Expense" dataKey="expense" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                            </BarChart>
-                         </ResponsiveContainer>
-                     </div>
+                    </div>
+                    <div className="h-[300px] w-full">
+                        {isMounted ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={aggregatedData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis
+                                        dataKey="label"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 12, fill: '#94a3b8' }}
+                                        minTickGap={30}
+                                    />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 12, fill: '#94a3b8' }}
+                                        tickFormatter={(val) => `₹${val / 1000}k`}
+                                    />
+                                    <Tooltip
+                                        formatter={(value: number) => `₹${value.toFixed(2)}`}
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                        cursor={{ fill: '#f8fafc' }}
+                                    />
+                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                    <Bar name="Income" dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                                    <Bar name="Expense" dataKey="expense" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="w-full h-full bg-slate-50 animate-pulse rounded-lg" />
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Category Breakdown (Secondary) */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                 <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Category Breakdown ({dateRange.replace(/_/g, ' ')})</h3>
-                 <div className="h-48 w-full">
-                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={categoryData.slice(0, 10)} layout="vertical" margin={{ left: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                            <XAxis type="number" hide />
-                            <YAxis dataKey="name" type="category" width={140} tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false}/>
-                            <Tooltip 
-                                formatter={(value: number) => `₹${value.toFixed(2)}`}
-                                cursor={{fill: 'transparent'}}
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20}>
-                                {categoryData.slice(0, 10).map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                     </ResponsiveContainer>
-                 </div>
+                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Category Breakdown ({dateRange.replace(/_/g, ' ')})</h3>
+                <div className="h-48 w-full">
+                    {isMounted ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={categoryData.slice(0, 10)} layout="vertical" margin={{ left: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 12, fill: '#64748b' }} tickLine={false} axisLine={false} />
+                                <Tooltip
+                                    formatter={(value: number) => `₹${value.toFixed(2)}`}
+                                    cursor={{ fill: 'transparent' }}
+                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                />
+                                <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20}>
+                                    {categoryData.slice(0, 10).map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="w-full h-full bg-slate-50 animate-pulse rounded-lg" />
+                    )}
+                </div>
             </div>
 
             {/* Data Table with Toggle */}
@@ -357,7 +370,7 @@ export const Reports: React.FC<ReportsProps> = ({ expenses }) => {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {filteredExpenses.length > 0 ? (
-                                    filteredExpenses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(expense => (
+                                    filteredExpenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(expense => (
                                         <tr key={expense.id} className="hover:bg-slate-50/50 transition-colors">
                                             <td className="px-6 py-3 text-slate-600 whitespace-nowrap">{expense.date}</td>
                                             <td className="px-6 py-3 font-medium text-slate-800">{expense.description}</td>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import { Sparkles, ArrowRight, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { parseExpenseNaturalLanguage } from '../services/geminiService';
 import { Expense } from '../types';
 
@@ -10,7 +10,7 @@ interface SmartAddProps {
 export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<React.ReactNode | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,52 +25,95 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
         onAdd(parsedExpenses);
         setInput('');
       } else {
-        setError("Couldn't parse expenses. Try being more specific.");
+        setError("Couldn't understand that. Try 'Lunch 500 via UPI'");
       }
-    } catch (err) {
-      setError("AI Service unavailable or key invalid.");
+    } catch (err: any) {
+      if (err.message === 'API_KEY_MISSING' || err.message === 'API_KEY_INVALID') {
+        setError(
+          <span className="flex items-center gap-1">
+            Invalid API Key.
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-white font-bold inline-flex items-center ml-1"
+            >
+              Get one here <ExternalLink className="w-3 h-3 ml-0.5" />
+            </a>
+          </span>
+        );
+      } else {
+        setError("AI Service Error. Please check your connection.");
+      }
     } finally {
       setIsProcessing(false);
     }
   };
 
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 md:p-6 rounded-xl shadow-lg mb-4 md:mb-8 text-white relative overflow-hidden">
-        {/* Background Decorative Circles */}
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white opacity-10 blur-2xl pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-white opacity-10 blur-2xl pointer-events-none"></div>
+    <div className="relative group rounded-2xl overflow-hidden shadow-lg transition-all hover:shadow-xl mb-6">
+      {/* Vibrant Gradient Background */}
+      <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"></div>
 
-      <div className="relative z-10">
-        <div className="flex items-center space-x-2 mb-2 md:mb-3">
-            <Sparkles className="w-5 h-5 text-yellow-300" />
-            <h2 className="text-base md:text-lg font-semibold">AI Smart Add</h2>
+      {/* Decorative Shapes */}
+      <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-white opacity-10 blur-3xl"></div>
+      <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 rounded-full bg-indigo-500 opacity-20 blur-2xl"></div>
+
+      <div className="relative z-10 p-5 md:p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
+              <Sparkles className="w-4 h-4 text-yellow-300" />
+            </div>
+            <h2 className="text-white font-semibold tracking-wide text-sm md:text-lg">AI Smart Entry</h2>
+          </div>
+          <div className="hidden md:block text-xs text-indigo-100 font-medium bg-white/10 px-3 py-1 rounded-full border border-white/10">
+            Powered by Gemini 2.5
+          </div>
         </div>
-        <p className="text-blue-100 mb-4 text-xs md:text-sm">
-            Type naturally like "Lunch at Haldiram's ₹450" or "Uber ₹120, Coffee ₹50".
-        </p>
 
         <form onSubmit={handleSubmit} className="relative">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type expense..."
+            placeholder="Tell me about your spending... e.g., 'Grocery 4500 and Uber 250'"
             disabled={isProcessing}
-            className="w-full pl-4 pr-12 py-3 rounded-lg bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white/30 transition-all text-sm md:text-base"
+            className="w-full pl-6 pr-14 py-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-indigo-100/60 focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-all text-base shadow-inner"
           />
+
           <button
             type="submit"
             disabled={isProcessing || !input.trim()}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-white/20 disabled:opacity-50 transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-lg bg-white text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:hover:bg-white transition-all shadow-lg active:scale-95 flex items-center justify-center"
           >
             {isProcessing ? (
-              <Loader2 className="w-5 h-5 animate-spin text-white" />
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <ArrowRight className="w-5 h-5 text-white" />
+              <ArrowRight className="w-5 h-5" />
             )}
           </button>
         </form>
-        {error && <p className="mt-2 text-xs md:text-sm text-red-200 bg-red-900/20 py-1 px-2 rounded inline-block">{error}</p>}
+
+        {/* Helper Chips for Mobile */}
+        <div className="mt-5 flex gap-2 overflow-x-auto no-scrollbar md:hidden">
+          {["Lunch 200", "Uber 350", "Grocery 1200", "Netflix 650"].map(hint => (
+            <button
+              key={hint}
+              onClick={() => setInput(hint)}
+              className="whitespace-nowrap px-3 py-1.5 bg-white/10 border border-white/10 rounded-full text-xs text-white/90 hover:bg-white/20 transition-colors"
+            >
+              {hint}
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <div className="mt-4 flex items-center gap-2 text-xs md:text-sm text-white bg-red-500/20 border border-red-500/30 py-2.5 px-4 rounded-lg backdrop-blur-sm animate-in fade-in slide-in-from-top-1">
+            <AlertCircle className="w-4 h-4 text-red-200 flex-shrink-0" />
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );
