@@ -11,7 +11,7 @@ import { Auth } from './components/Auth';
 import { generateSpendingInsights } from './services/geminiService';
 import { supabaseService } from './services/supabaseService';
 import { supabase } from './lib/supabase';
-import { Expense, RecurringExpense } from './types';
+import { Expense, RecurringExpense, Budget } from './types';
 
 
 const generateId = () => crypto.randomUUID();
@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'sheet' | 'reports' | 'recurring' | 'settings'>('dashboard');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [insight, setInsight] = useState<string>('');
   const [isLoadingInsight, setIsLoadingInsight] = useState(false);
   const [dbStatus, setDbStatus] = useState<'Initializing' | 'Syncing' | 'Synced' | 'Error'>('Initializing');
@@ -55,9 +56,11 @@ const App: React.FC = () => {
         setDbStatus('Syncing');
         const loadedExpenses = await supabaseService.getExpenses();
         const loadedRecurring = await supabaseService.getRecurringExpenses();
+        const loadedBudgets = await supabaseService.getBudgets();
 
         setExpenses(loadedExpenses);
         setRecurringExpenses(loadedRecurring);
+        setBudgets(loadedBudgets);
         setDbStatus('Synced');
       } catch (error) {
         console.error("Failed to load data", error);
@@ -263,6 +266,34 @@ const App: React.FC = () => {
     }
   };
 
+  // --- Budget Handlers ---
+
+  const handleSaveBudget = async (budget: Budget) => {
+    setDbStatus('Syncing');
+    try {
+      await supabaseService.upsertBudget(budget);
+      // Refresh budgets to get the latest state (or optimistic update)
+      const updatedBudgets = await supabaseService.getBudgets();
+      setBudgets(updatedBudgets);
+      setDbStatus('Synced');
+    } catch (err) {
+      console.error("Budget save failed", err);
+      setDbStatus('Error');
+    }
+  };
+
+  const handleDeleteBudget = async (id: string) => {
+    setDbStatus('Syncing');
+    try {
+      await supabaseService.deleteBudget(id);
+      setBudgets(prev => prev.filter(b => b.id !== id));
+      setDbStatus('Synced');
+    } catch (err) {
+      console.error("Budget delete failed", err);
+      setDbStatus('Error');
+    }
+  };
+
   // --- Settings / Restore Handlers ---
 
   const handleRestoreData = async (newExpenses: Expense[], newRecurring: RecurringExpense[]) => {
@@ -457,7 +488,7 @@ const App: React.FC = () => {
 
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              <SummaryCards expenses={expenses} />
+              <SummaryCards expenses={expenses} budgets={budgets} />
               <Charts expenses={expenses} />
               {/* Recent Transactions Preview */}
               <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200">
@@ -518,8 +549,11 @@ const App: React.FC = () => {
             <Settings
               expenses={expenses}
               recurringExpenses={recurringExpenses}
+              budgets={budgets}
               onRestore={handleRestoreData}
               onReset={handleResetData}
+              onSaveBudget={handleSaveBudget}
+              onDeleteBudget={handleDeleteBudget}
             />
           )}
 

@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Expense, RecurringExpense } from '../types';
+import { Expense, RecurringExpense, Budget } from '../types';
 
 export const supabaseService = {
     // --- Expenses ---
@@ -124,6 +124,43 @@ export const supabaseService = {
     async deleteRecurringExpense(id: string): Promise<void> {
         const { error } = await supabase
             .from('recurring_expenses')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+    },
+
+    // --- Budgets ---
+
+    async getBudgets(): Promise<Budget[]> {
+        const { data, error } = await supabase
+            .from('budgets')
+            .select('*');
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    async upsertBudget(budget: Budget): Promise<void> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { error } = await supabase
+            .from('budgets')
+            .upsert({
+                id: budget.id,
+                user_id: user.id,
+                category: budget.category,
+                amount: budget.amount,
+                period: budget.period
+            }, { onConflict: 'user_id, category' });
+
+        if (error) throw error;
+    },
+
+    async deleteBudget(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('budgets')
             .delete()
             .eq('id', id);
 

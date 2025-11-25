@@ -54,6 +54,13 @@ export interface RecurringExpense {
   active: boolean;
 }
 
+export interface Budget {
+  id: string;
+  category: string;
+  amount: number;
+  period: 'monthly';
+}
+
 // --- Google Sheets Integration Types ---
 
 export interface GoogleUser {

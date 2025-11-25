@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
-    AreaChart, Area
+    AreaChart, Area, Legend
 } from 'recharts';
 import { Expense } from '../types';
 import { COLORS } from '../constants';
@@ -33,7 +33,6 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
-        // Small timeout to ensure container has layout dimensions
         const timer = setTimeout(() => setIsMounted(true), 100);
         return () => clearTimeout(timer);
     }, []);
@@ -51,13 +50,31 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
             .sort((a, b) => b.value - a.value);
     }, [expenseData]);
 
-    const dailyTrendData = useMemo(() => {
+    const paymentMethodData = useMemo(() => {
         const map = new Map<string, number>();
         expenseData.forEach(e => {
-            const current = map.get(e.date) || 0;
-            map.set(e.date, current + e.amount);
+            const method = e.paymentMethod || 'Other';
+            const current = map.get(method) || 0;
+            map.set(method, current + e.amount);
         });
-        // Sort by date
+        return Array.from(map.entries())
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+    }, [expenseData]);
+
+    const dailyTrendData = useMemo(() => {
+        const map = new Map<string, number>();
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        expenseData.forEach(e => {
+            const date = new Date(e.date);
+            if (date >= thirtyDaysAgo) {
+                const current = map.get(e.date) || 0;
+                map.set(e.date, current + e.amount);
+            }
+        });
+
         return Array.from(map.entries())
             .map(([date, amount]) => ({ date, amount }))
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -69,7 +86,6 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
 
     const totalExpense = useMemo(() => expenseData.reduce((sum, item) => sum + item.amount, 0), [expenseData]);
 
-    // Loading State to prevent Recharts crash on initial render
     if (!isMounted) {
         return (
             <div className="space-y-6 mb-8 animate-pulse">
@@ -87,12 +103,12 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
             {/* Row 1: Trend & Categories */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* Daily Trend Area Chart - Takes up 2 cols */}
+                {/* Daily Trend Area Chart */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100">
                     <div className="flex justify-between items-center mb-6">
                         <div>
                             <h3 className="text-lg font-bold text-slate-800 tracking-tight">Spending Trend</h3>
-                            <p className="text-sm text-slate-400 font-medium">Daily expenses over time</p>
+                            <p className="text-sm text-slate-400 font-medium">Last 30 Days</p>
                         </div>
                     </div>
                     <div className="h-[280px] w-full">
@@ -138,8 +154,8 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
 
                 {/* Category Donut Chart */}
                 <div className="bg-white p-6 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 tracking-tight mb-1">Distribution</h3>
-                    <p className="text-sm text-slate-400 font-medium mb-4">By category</p>
+                    <h3 className="text-lg font-bold text-slate-800 tracking-tight mb-1">Categories</h3>
+                    <p className="text-sm text-slate-400 font-medium mb-4">Distribution</p>
 
                     <div className="h-[200px] w-full relative flex-shrink-0">
                         <ResponsiveContainer width="100%" height="100%">
@@ -148,8 +164,8 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
                                     data={categoryData}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={65}
-                                    outerRadius={85}
+                                    innerRadius={60}
+                                    outerRadius={80}
                                     paddingAngle={4}
                                     dataKey="value"
                                     cornerRadius={6}
@@ -161,7 +177,6 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
                                 <Tooltip content={<CustomTooltip />} />
                             </PieChart>
                         </ResponsiveContainer>
-                        {/* Center Text */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                             <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total</span>
                             <span className="text-xl font-bold text-slate-800">
@@ -170,62 +185,89 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
                         </div>
                     </div>
 
-                    {/* Legend */}
-                    <div className="flex-1 overflow-y-auto custom-scrollbar mt-4 pr-2 space-y-3">
-                        {categoryData.map((d, i) => (
-                            <div key={d.name} className="flex items-center justify-between group">
-                                <div className="flex items-center gap-2 overflow-hidden">
-                                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }}></span>
-                                    <span className="text-sm text-slate-600 font-medium truncate group-hover:text-slate-900 transition-colors">{d.name}</span>
-                                </div>
-                                <span className="text-sm font-bold text-slate-700 bg-slate-50 px-2 py-0.5 rounded">
-                                    {((d.value / totalExpense) * 100).toFixed(0)}%
-                                </span>
+                    {/* Mini Legend */}
+                    <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                        {categoryData.slice(0, 3).map((d, i) => (
+                            <div key={d.name} className="flex items-center gap-1 text-xs text-slate-500">
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></span>
+                                {d.name}
                             </div>
                         ))}
                     </div>
                 </div>
             </div>
 
-            {/* Row 2: Top Expenses Bar Chart */}
-            <div className="bg-white p-6 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100">
-                <h3 className="text-lg font-bold text-slate-800 tracking-tight mb-6">Top Transactions</h3>
-                <div className="h-[200px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            data={topExpensesData}
-                            layout="vertical"
-                            margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
-                            barSize={20}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                            <XAxis type="number" hide />
-                            <YAxis
-                                type="category"
-                                dataKey="description"
-                                width={180}
-                                tick={{ fontSize: 13, fill: '#475569', fontWeight: 500 }}
-                                tickLine={false}
-                                axisLine={false}
-                                tickFormatter={(value) => value.length > 22 ? `${value.substring(0, 22)}...` : value}
-                            />
-                            <Tooltip
-                                cursor={{ fill: '#f8fafc', radius: 4 }}
-                                content={<CustomTooltip />}
-                            />
-                            <Bar
-                                dataKey="amount"
-                                radius={[0, 6, 6, 0]}
-                                background={{ fill: '#f8fafc', radius: 6 }}
+            {/* Row 2: Payment Methods & Top Expenses */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {/* Payment Method Pie Chart */}
+                <div className="bg-white p-6 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100 flex flex-col">
+                    <h3 className="text-lg font-bold text-slate-800 tracking-tight mb-1">Payment Mode</h3>
+                    <p className="text-sm text-slate-400 font-medium mb-4">Usage</p>
+
+                    <div className="h-[200px] w-full relative flex-shrink-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={paymentMethodData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={0}
+                                    outerRadius={80}
+                                    paddingAngle={2}
+                                    dataKey="value"
+                                >
+                                    {paymentMethodData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} stroke="none" />
+                                    ))}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Top Expenses Bar Chart - Takes up 2 cols */}
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100">
+                    <h3 className="text-lg font-bold text-slate-800 tracking-tight mb-6">Top Transactions</h3>
+                    <div className="h-[200px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                                data={topExpensesData}
+                                layout="vertical"
+                                margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
+                                barSize={20}
                             >
-                                {
-                                    topExpensesData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={index === 0 ? '#6366f1' : '#818cf8'} fillOpacity={index === 0 ? 1 : 0.7} />
-                                    ))
-                                }
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                <XAxis type="number" hide />
+                                <YAxis
+                                    type="category"
+                                    dataKey="description"
+                                    width={180}
+                                    tick={{ fontSize: 13, fill: '#475569', fontWeight: 500 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(value) => value.length > 22 ? `${value.substring(0, 22)}...` : value}
+                                />
+                                <Tooltip
+                                    cursor={{ fill: '#f8fafc', radius: 4 }}
+                                    content={<CustomTooltip />}
+                                />
+                                <Bar
+                                    dataKey="amount"
+                                    radius={[0, 6, 6, 0]}
+                                    background={{ fill: '#f8fafc', radius: 6 }}
+                                >
+                                    {
+                                        topExpensesData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={index === 0 ? '#6366f1' : '#818cf8'} fillOpacity={index === 0 ? 1 : 0.7} />
+                                        ))
+                                    }
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </div>
         </div>
