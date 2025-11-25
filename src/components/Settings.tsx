@@ -3,6 +3,7 @@ import { Expense, RecurringExpense, Budget } from '../types';
 import { Download, RefreshCw, Trash2, Database, AlertTriangle } from 'lucide-react';
 import { BudgetSettings } from './BudgetSettings';
 import { exportToCSV } from '../utils/exportUtils';
+import { MigrationTool } from './MigrationTool';
 
 interface SettingsProps {
   expenses: Expense[];
@@ -76,6 +77,9 @@ export const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-12">
+
+      {/* Migration Tool (Only shows if local data exists) */}
+      <MigrationTool />
 
       {/* Budget Settings Section */}
       <section>
