@@ -185,12 +185,17 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
                         </div>
                     </div>
 
-                    {/* Mini Legend */}
-                    <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                        {categoryData.slice(0, 3).map((d, i) => (
-                            <div key={d.name} className="flex items-center gap-1 text-xs text-slate-500">
-                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></span>
-                                {d.name}
+                    {/* Detailed Category List */}
+                    <div className="mt-4 space-y-3 overflow-y-auto max-h-[200px] custom-scrollbar pr-2 border-t border-slate-50 pt-4">
+                        {categoryData.map((d, i) => (
+                            <div key={d.name} className="flex items-center justify-between text-sm group">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }}></span>
+                                    <span className="text-slate-600 group-hover:text-slate-900 transition-colors truncate max-w-[120px]" title={d.name}>{d.name}</span>
+                                </div>
+                                <span className="font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">
+                                    ₹{d.value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                                </span>
                             </div>
                         ))}
                     </div>
