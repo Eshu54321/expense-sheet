@@ -503,6 +503,7 @@ const App: React.FC = () => {
                         <th className="pb-3 font-semibold whitespace-nowrap px-2">Date</th>
                         <th className="pb-3 font-semibold whitespace-nowrap px-2">Description</th>
                         <th className="pb-3 font-semibold whitespace-nowrap px-2">Category</th>
+                        <th className="pb-3 font-semibold whitespace-nowrap px-2">Method</th>
                         <th className="pb-3 font-semibold text-right whitespace-nowrap px-2">Amount</th>
                       </tr>
                     </thead>
@@ -512,6 +513,7 @@ const App: React.FC = () => {
                           <td className="py-3 px-2 whitespace-nowrap">{e.date}</td>
                           <td className="py-3 px-2 min-w-[150px]">{e.description}</td>
                           <td className="py-3 px-2 whitespace-nowrap">{e.category}</td>
+                          <td className="py-3 px-2 whitespace-nowrap text-slate-500 text-xs">{e.paymentMethod}</td>
                           <td className={`py-3 px-2 text-right font-medium whitespace-nowrap ${e.amount < 0 ? 'text-green-600' : ''}`}>
                             ₹{Math.abs(e.amount).toFixed(2)}
                           </td>
