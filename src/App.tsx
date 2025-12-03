@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Table, Lightbulb, Database, FileBarChart, RefreshCw, Settings as SettingsIcon, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, Table, Lightbulb, Database, FileBarChart, RefreshCw, Settings as SettingsIcon, X, LogOut, Users } from 'lucide-react';
 import { ExpenseTable } from './components/ExpenseTable';
 import { SummaryCards } from './components/SummaryCards';
 import { Charts } from './components/Charts';
@@ -7,6 +7,7 @@ import { SmartAdd } from './components/SmartAdd';
 import { Reports } from './components/Reports';
 import { RecurringExpenses } from './components/RecurringExpenses';
 import { Settings } from './components/Settings';
+import { Lenders } from './components/Lenders';
 import { Auth } from './components/Auth';
 import { generateSpendingInsights } from './services/geminiService';
 import { supabaseService } from './services/supabaseService';
@@ -18,7 +19,7 @@ const generateId = () => crypto.randomUUID();
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'sheet' | 'reports' | 'recurring' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'sheet' | 'reports' | 'recurring' | 'lenders' | 'settings'>('dashboard');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -387,6 +388,14 @@ const App: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('lenders')}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'lenders' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+          >
+            <Users className="w-5 h-5" />
+            <span className="font-medium">Lenders</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('reports')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'reports' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
@@ -451,7 +460,8 @@ const App: React.FC = () => {
               {activeTab === 'dashboard' ? 'Overview' :
                 activeTab === 'reports' ? 'Monthly Reports' :
                   activeTab === 'recurring' ? 'Recurring Rules' :
-                    activeTab === 'settings' ? 'Settings' : 'Expenses'}
+                    activeTab === 'lenders' ? 'Lenders & Loans' :
+                      activeTab === 'settings' ? 'Settings' : 'Expenses'}
             </h2>
             <p className="text-slate-500 text-xs md:text-sm">Personal Finance Sheet • INR (₹)</p>
           </div>
@@ -473,7 +483,7 @@ const App: React.FC = () => {
 
         <div className="max-w-6xl mx-auto space-y-6">
 
-          {(activeTab !== 'reports' && activeTab !== 'recurring' && activeTab !== 'settings') && <SmartAdd onAdd={handleAddExpenses} />}
+          {(activeTab !== 'reports' && activeTab !== 'recurring' && activeTab !== 'lenders' && activeTab !== 'settings') && <SmartAdd onAdd={handleAddExpenses} />}
 
           {/* Mobile Insight Card */}
           {insight && (
@@ -547,6 +557,10 @@ const App: React.FC = () => {
             <Reports expenses={expenses} />
           )}
 
+          {activeTab === 'lenders' && (
+            <Lenders />
+          )}
+
           {activeTab === 'settings' && (
             <Settings
               expenses={expenses}
@@ -587,6 +601,14 @@ const App: React.FC = () => {
           >
             <RefreshCw className="w-6 h-6" />
             <span className="text-[10px] font-medium">Rules</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('lenders')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'lenders' ? 'text-green-600' : 'text-slate-400'}`}
+          >
+            <Users className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Lenders</span>
           </button>
 
           <button

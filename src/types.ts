@@ -61,6 +61,28 @@ export interface Budget {
   period: 'monthly';
 }
 
+export interface Lender {
+  id: string;
+  name: string;
+  contactInfo?: string;
+  totalBorrowed: number;
+  totalRepaid: number;
+  currentBalance: number; // Positive means you owe them
+  interestRate?: number;
+  emiAmount?: number;
+  loanType?: string;
+  startDate?: string;
+}
+
+export interface LoanTransaction {
+  id: string;
+  lenderId: string;
+  date: string; // YYYY-MM-DD
+  type: 'borrow' | 'repay';
+  amount: number;
+  description: string;
+}
+
 // --- Google Sheets Integration Types ---
 
 export interface GoogleUser {

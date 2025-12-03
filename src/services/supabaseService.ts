@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Expense, RecurringExpense, Budget } from '../types';
+import { Expense, RecurringExpense, Budget, Lender, LoanTransaction } from '../types';
 
 export const supabaseService = {
     // --- Expenses ---
@@ -11,7 +11,15 @@ export const supabaseService = {
             .order('date', { ascending: false });
 
         if (error) throw error;
-        return data || [];
+
+        return (data || []).map((item: any) => ({
+            id: item.id,
+            date: item.date,
+            description: item.description,
+            category: item.category,
+            amount: item.amount,
+            paymentMethod: item.payment_method
+        }));
     },
 
     async addExpenses(expenses: Expense[]): Promise<void> {
@@ -161,6 +169,139 @@ export const supabaseService = {
     async deleteBudget(id: string): Promise<void> {
         const { error } = await supabase
             .from('budgets')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+    },
+
+    // --- Lenders ---
+
+    async getLenders(): Promise<Lender[]> {
+        const { data, error } = await supabase
+            .from('lenders')
+            .select(`
+                *,
+                loan_transactions (
+                    amount,
+                    type
+                )
+            `);
+
+        if (error) throw error;
+
+        return (data || []).map((lender: any) => {
+            const transactions = lender.loan_transactions || [];
+            const totalBorrowed = transactions
+                .filter((t: any) => t.type === 'borrow')
+                .reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+            const totalRepaid = transactions
+                .filter((t: any) => t.type === 'repay')
+                .reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+
+            return {
+                id: lender.id,
+                name: lender.name,
+                contactInfo: lender.contact_info,
+                interestRate: lender.interest_rate,
+                emiAmount: lender.emi_amount,
+                loanType: lender.loan_type,
+                startDate: lender.start_date,
+                totalBorrowed,
+                totalRepaid,
+                currentBalance: totalBorrowed - totalRepaid
+            };
+        });
+    },
+
+    async addLender(lender: Lender): Promise<void> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { error } = await supabase
+            .from('lenders')
+            .insert({
+                id: lender.id,
+                user_id: user.id,
+                name: lender.name,
+                contact_info: lender.contactInfo,
+                interest_rate: lender.interestRate,
+                emi_amount: lender.emiAmount,
+                loan_type: lender.loanType,
+                start_date: lender.startDate
+            });
+
+        if (error) throw error;
+    },
+
+    async updateLender(lender: Lender): Promise<void> {
+        const { error } = await supabase
+            .from('lenders')
+            .update({
+                name: lender.name,
+                contact_info: lender.contactInfo,
+                interest_rate: lender.interestRate,
+                emi_amount: lender.emiAmount,
+                loan_type: lender.loanType,
+                start_date: lender.startDate
+            })
+            .eq('id', lender.id);
+
+        if (error) throw error;
+    },
+
+    async deleteLender(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('lenders')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+    },
+
+    // --- Loan Transactions ---
+
+    async getLoanTransactions(lenderId: string): Promise<LoanTransaction[]> {
+        const { data, error } = await supabase
+            .from('loan_transactions')
+            .select('*')
+            .eq('lender_id', lenderId)
+            .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        return (data || []).map((t: any) => ({
+            id: t.id,
+            lenderId: t.lender_id,
+            date: t.date,
+            type: t.type,
+            amount: Number(t.amount),
+            description: t.description
+        }));
+    },
+
+    async addLoanTransaction(transaction: LoanTransaction): Promise<void> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { error } = await supabase
+            .from('loan_transactions')
+            .insert({
+                id: transaction.id,
+                lender_id: transaction.lenderId,
+                user_id: user.id,
+                date: transaction.date,
+                type: transaction.type,
+                amount: transaction.amount,
+                description: transaction.description
+            });
+
+        if (error) throw error;
+    },
+
+    async deleteLoanTransaction(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('loan_transactions')
             .delete()
             .eq('id', id);
 
