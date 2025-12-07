@@ -19,6 +19,12 @@ export const parseExpenseNaturalLanguage = async (input: string): Promise<Omit<E
     Parse the following natural language expense text into a structured JSON array.
     Context: The user is in India. Currency is INR (₹).
     Current Date: ${new Date().toISOString().split('T')[0]}.
+    
+    CRITICAL INSTRUCTION: If the input lists multiple items (e.g., "Tomato 1kg 50rs, Onion 2kg 60rs"), you MUST split them into separate objects in the array.
+    Do not aggregate them into a single "Groceries" entry unless the input is vague (e.g., "Groceries 500").
+    
+    For the 'description' field, include quantity or rate details if provided (e.g., "Tomato (1kg)", "Milk (2 packets)").
+    
     If the text implies income (e.g., "Salary", "Sold bike"), set the amount as a negative number.
     If no date is specified, use the current date.
     Common payment methods in India: UPI, Paytm, GPay, PhonePe, Credit Card, Cash.
@@ -65,10 +71,17 @@ export const parseExpenseImage = async (imageBase64: string): Promise<Omit<Expen
     Context: The user is in India. Currency is INR (₹).
     Current Date: ${new Date().toISOString().split('T')[0]}.
     If the date is visible on the receipt, use it. Otherwise use current date.
-    Extract the Merchant Name as 'description'.
-    Extract the Total Amount as 'amount'.
-    Guess the Category based on the merchant (e.g., 'Food & Dining', 'Shopping', 'Transportation').
-    Guess the Payment Method if visible (e.g., 'Cash', 'Card', 'UPI'), otherwise default to 'Cash'.
+
+    CRITICAL INSTRUCTION: You MUST list every single line item on the bill as a separate expense object.
+    Do NOT just give the total amount.
+    
+    For each item:
+    - 'description': The item name followed by quantity/rate if visible (e.g., "Basmati Rice (5kg)", "Sugar (1kg @ 40/kg)").
+    - 'amount': The price for that specific item line.
+    - 'category': Guess the specific category for that item (e.g., 'Food & Dining' for vegetables, 'Health' for medicines).
+    - 'paymentMethod': Guess the payment method if visible at the bottom, otherwise default to 'Cash'.
+
+    If the image is not a clear bill with items, or if it is just a payment screenshot, then just extract the total amount as a single entry.
   `;
 
   try {

@@ -12,6 +12,7 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<React.ReactNode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,6 +136,17 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
             </button>
           </div>
 
+          {/* Gallery Upload Button */}
+          <button
+            type="button"
+            onClick={() => galleryInputRef.current?.click()}
+            disabled={isProcessing}
+            className="flex-shrink-0 p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all shadow-inner flex items-center justify-center group/img"
+            title="Upload Screenshot"
+          >
+            <ImageIcon className="w-6 h-6 group-hover/img:scale-110 transition-transform" />
+          </button>
+
           {/* Camera Button */}
           <button
             type="button"
@@ -149,12 +161,22 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
               <Camera className="w-6 h-6 group-hover/cam:scale-110 transition-transform" />
             )}
           </button>
+
+          {/* Camera Input (Forces Camera) */}
           <input
             type="file"
             ref={fileInputRef}
             onChange={handleImageUpload}
             accept="image/*"
             capture="environment"
+            className="hidden"
+          />
+          {/* Gallery Input (Allows File Picker) */}
+          <input
+            type="file"
+            ref={galleryInputRef}
+            onChange={handleImageUpload}
+            accept="image/*"
             className="hidden"
           />
         </form>
