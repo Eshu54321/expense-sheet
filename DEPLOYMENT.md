@@ -15,11 +15,16 @@ If you haven't already, push your code to a GitHub repository.
     git push -u origin main
     ```
 
-## 2. Import in Vercel
-1.  Go to [vercel.com](https://vercel.com) and sign up/login.
-2.  Click **"Add New..."** -> **"Project"**.
-3.  Select **"Continue with GitHub"**.
-4.  Find your `ExpenseSheet` repository and click **"Import"**.
+## Option 1: Vercel CLI (Fastest)
+Since you have the Vercel CLI installed, you can deploy directly:
+1.  Run: `npx vercel`
+2.  Follow the prompts (Login -> Yes to deploy -> Default settings).
+3.  **Important**: You still need to add Environment Variables in the Vercel Dashboard after the first deploy fails (or configure them via CLI if you know how).
+
+## Option 2: GitHub Integration (Recommended for Automation)
+1.  Push to GitHub.
+2.  Import in Vercel.
+
 
 ## 3. Configure Environment Variables (CRITICAL)
 **Before clicking Deploy**, you must add your API keys.

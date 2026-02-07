@@ -107,8 +107,21 @@ export interface SyncStatus {
 }
 
 export interface SheetMetadata {
-  spreadsheetId: string;
-  spreadsheetUrl: string;
-  expenseSheetId: number;
   recurringSheetId: number;
+}
+
+export interface ItemRate {
+  id: string;
+  name: string;
+  rate: number;
+  unit: string | null;
+  lastUpdated: string; // ISO string
+}
+
+export interface PriceHistory {
+  id: string;
+  name: string;
+  rate: number;
+  unit: string | null;
+  date: string; // YYYY-MM-DD
 }

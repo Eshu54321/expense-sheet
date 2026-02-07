@@ -12,7 +12,7 @@ const getClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
-export const parseExpenseNaturalLanguage = async (input: string): Promise<Omit<Expense, 'id'>[]> => {
+export const parseExpenseNaturalLanguage = async (input: string): Promise<{ expenses: Omit<Expense, 'id'>[], items: { name: string, quantity: string, rate: number, total: number, unit: string | null }[] }> => {
   const ai = getClient();
 
   const prompt = `
@@ -20,14 +20,24 @@ export const parseExpenseNaturalLanguage = async (input: string): Promise<Omit<E
     Context: The user is in India. Currency is INR (₹).
     Current Date: ${new Date().toISOString().split('T')[0]}.
     
-    CRITICAL INSTRUCTION: If the input lists multiple items (e.g., "Tomato 1kg 50rs, Onion 2kg 60rs"), you MUST split them into separate objects in the array.
-    Do not aggregate them into a single "Groceries" entry unless the input is vague (e.g., "Groceries 500").
+    CRITICAL INSTRUCTION: If the input lists multiple items (e.g., "Tomato 1kg 50rs, Onion 2kg 60rs"), you MUST split them into separate objects in the 'expenses' array.
+    Also, extract detailed item information into a separate 'items' array.
     
-    For the 'description' field, include quantity or rate details if provided (e.g., "Tomato (1kg)", "Milk (2 packets)").
+    For the 'items' array:
+    - name: Item name (e.g., "Tomato")
+    - quantity: Quantity string (e.g., "1kg")
+    - rate: Rate per unit if available (e.g., 50). If only total is given, calculate rate if quantity is known, else null.
+    - unit: Unit string (e.g., "kg", "packet").
+    - total: Total amount for this item.
+
+    Example Output Structure:
+    {
+      "expenses": [ ...standard expenses... ],
+      "items": [
+        { "name": "Tomato", "quantity": "1kg", "rate": 50, "unit": "kg", "total": 50 }
+      ]
+    }
     
-    If the text implies income (e.g., "Salary", "Sold bike"), set the amount as a negative number.
-    If no date is specified, use the current date.
-    Common payment methods in India: UPI, Paytm, GPay, PhonePe, Credit Card, Cash.
     Input: "${input}"
   `;
 
@@ -38,24 +48,44 @@ export const parseExpenseNaturalLanguage = async (input: string): Promise<Omit<E
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              description: { type: Type.STRING },
-              amount: { type: Type.NUMBER },
-              category: { type: Type.STRING },
-              date: { type: Type.STRING, description: "YYYY-MM-DD" },
-              paymentMethod: { type: Type.STRING }
+          type: Type.OBJECT,
+          properties: {
+            expenses: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  description: { type: Type.STRING },
+                  amount: { type: Type.NUMBER },
+                  category: { type: Type.STRING },
+                  date: { type: Type.STRING, description: "YYYY-MM-DD" },
+                  paymentMethod: { type: Type.STRING }
+                },
+                required: ["description", "amount", "category", "date", "paymentMethod"]
+              }
             },
-            required: ["description", "amount", "category", "date", "paymentMethod"]
-          }
+            items: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  quantity: { type: Type.STRING },
+                  rate: { type: Type.NUMBER },
+                  unit: { type: Type.STRING, nullable: true },
+                  total: { type: Type.NUMBER }
+                },
+                required: ["name", "total"]
+              }
+            }
+          },
+          required: ["expenses", "items"]
         }
       }
     });
 
     const text = response.text;
-    if (!text) return [];
+    if (!text) return { expenses: [], items: [] };
     return JSON.parse(text);
   } catch (error) {
     console.error("Gemini Parse Error:", error);

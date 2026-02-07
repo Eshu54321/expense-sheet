@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Expense, RecurringExpense, Budget, Lender, LoanTransaction } from '../types';
+import { Expense, RecurringExpense, Budget, Lender, LoanTransaction, ItemRate, PriceHistory } from '../types';
 
 export const supabaseService = {
     // --- Expenses ---
@@ -306,5 +306,103 @@ export const supabaseService = {
             .eq('id', id);
 
         if (error) throw error;
+    },
+
+    // --- Item Rates ---
+
+    async getItemRates(): Promise<ItemRate[]> {
+        const { data, error } = await supabase
+            .from('item_rates')
+            .select('*')
+            .order('name', { ascending: true });
+
+        if (error) throw error;
+
+        return (data || []).map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            rate: item.rate,
+            unit: item.unit,
+            lastUpdated: item.last_updated
+        }));
+    },
+
+    async upsertItemRate(rate: Omit<ItemRate, 'id' | 'lastUpdated'>): Promise<void> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const timestamp = new Date().toISOString();
+        const today = timestamp.split('T')[0];
+
+        // 1. Update latest rate
+        const { error } = await supabase
+            .from('item_rates')
+            .upsert({
+                user_id: user.id,
+                name: rate.name,
+                rate: rate.rate,
+                unit: rate.unit,
+                last_updated: timestamp
+            }, { onConflict: 'user_id, name' });
+
+        if (error) throw error;
+
+        // 2. Log history (Duplicate check: If same item, rate, and date exists, don't add?)
+        // For simplicity, we just insert. Charts can handle multiple points per day or we use DISTINCT in fetch.
+        // Better: Check if we already have an entry for this item on this date.
+        // Actually, prices might change intraday? Let's just log it.
+        const { error: historyError } = await supabase
+            .from('price_history')
+            .insert({
+                user_id: user.id,
+                name: rate.name,
+                rate: rate.rate,
+                unit: rate.unit,
+                date: today
+            });
+
+        if (historyError) console.error("Failed to log price history", historyError);
+    },
+
+    async getPriceHistory(name: string): Promise<PriceHistory[]> {
+        const { data, error } = await supabase
+            .from('price_history')
+            .select('*')
+            .eq('name', name)
+            .order('date', { ascending: true });
+
+        if (error) throw error;
+
+        return (data || []).map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            rate: item.rate,
+            unit: item.unit,
+            date: item.date
+        }));
+    },
+
+    async deleteItemRate(name: string): Promise<void> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        // Delete from item_rates
+        const { error } = await supabase
+            .from('item_rates')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('name', name);
+
+        if (error) throw error;
+
+        // Optional: Delete history too? 
+        // For now let's keep history or delete it? 
+        // Usually users expect "Delete" to remove it from the list.
+        // Let's delete history to be clean.
+        await supabase
+            .from('price_history')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('name', name);
     }
 };

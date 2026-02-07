@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
-import { Sparkles, ArrowRight, Loader2, AlertCircle, ExternalLink, Camera, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, ArrowRight, Loader2, AlertCircle, ExternalLink, Camera, Image as ImageIcon, History } from 'lucide-react';
 import { parseExpenseNaturalLanguage, parseExpenseImage } from '../services/geminiService';
-import { Expense } from '../types';
+import { supabaseService } from '../services/supabaseService';
+import { Expense, ItemRate } from '../types';
 
 interface SmartAddProps {
   onAdd: (expenses: Omit<Expense, 'id'>[]) => void;
@@ -14,6 +15,54 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-complete state
+  const [rates, setRates] = useState<ItemRate[]>([]);
+  const [suggestions, setSuggestions] = useState<ItemRate[]>([]);
+  const [cursorPosition, setCursorPosition] = useState(0);
+
+  useEffect(() => {
+    // Load rates for auto-complete
+    supabaseService.getItemRates().then(setRates).catch(console.error);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInput(value);
+    setCursorPosition(e.target.selectionStart || 0);
+
+    if (!value.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    // Find the current word being typed
+    const lastWord = value.split(' ').pop() || '';
+    if (lastWord.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    // Filter suggestions
+    // Filter suggestions - simple includes check
+    const matches = rates.filter(r =>
+      r.name.toLowerCase().includes(lastWord.toLowerCase()) &&
+      lastWord.toLowerCase() !== r.name.toLowerCase() // Don't suggest if already typed exact match
+    ).slice(0, 3);
+
+    setSuggestions(matches);
+
+    setSuggestions(matches);
+  };
+
+  const applySuggestion = (rate: ItemRate) => {
+    const words = input.split(' ');
+    words.pop(); // Remove partial word
+    const newValue = [...words, rate.name].join(' ') + ' ';
+    setInput(newValue);
+    setSuggestions([]);
+    // Optionally focus back to input
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -22,9 +71,28 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
     setError(null);
 
     try {
-      const parsedExpenses = await parseExpenseNaturalLanguage(input);
-      if (parsedExpenses && parsedExpenses.length > 0) {
-        onAdd(parsedExpenses);
+      const { expenses, items } = await parseExpenseNaturalLanguage(input);
+
+      if (expenses && expenses.length > 0) {
+        onAdd(expenses);
+
+        // Process collected item rates in background
+        if (items && items.length > 0) {
+          try {
+            items.forEach(async (item) => {
+              if (item.rate && item.rate > 0) {
+                await supabaseService.upsertItemRate({
+                  name: item.name,
+                  rate: item.rate,
+                  unit: item.unit
+                });
+              }
+            });
+          } catch (err) {
+            console.error("Failed to update rates", err);
+          }
+        }
+
         setInput('');
       } else {
         setError("Couldn't understand that. Try 'Lunch 500 via UPI'");
@@ -91,13 +159,19 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
   };
 
   return (
-    <div className="relative group rounded-2xl overflow-hidden shadow-lg transition-all hover:shadow-xl mb-6">
-      {/* Vibrant Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"></div>
+    <div className="relative group rounded-3xl shadow-lg transition-all hover:shadow-xl mb-6">
+      {/* Overflow hidden MUST be removed from parent if we want dropdown to spill out, 
+          OR we keep it and ensure dropdown is inside. The current design has overflow-hidden.
+          Let's change the dropdown strategy to be absolute inside the form container which is safe.
+      */}
+      {/* Background with clipping */}
+      <div className="absolute inset-0 rounded-3xl overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"></div>
 
-      {/* Decorative Shapes */}
-      <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-white opacity-10 blur-3xl"></div>
-      <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 rounded-full bg-indigo-500 opacity-20 blur-2xl"></div>
+        {/* Decorative Shapes (Clipped by the new wrapper) */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-white opacity-10 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 rounded-full bg-indigo-500 opacity-20 blur-2xl"></div>
+      </div>
 
       <div className="relative z-10 p-5 md:p-8">
         <div className="flex items-center justify-between mb-6">
@@ -112,21 +186,21 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="relative flex gap-2">
-          <div className="relative flex-grow">
+        <form onSubmit={handleSubmit} className="relative flex items-center gap-2">
+          <div className="relative flex-grow flex items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-xl focus-within:ring-2 focus-within:ring-white/40 focus-within:bg-white/20 transition-all shadow-inner">
             <input
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={handleInputChange}
               placeholder="Tell me about your spending... e.g., 'Grocery 4500 and Uber 250'"
               disabled={isProcessing}
-              className="w-full pl-6 pr-14 py-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-indigo-100/60 focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-all text-base shadow-inner"
+              className="w-full pl-6 pr-2 py-4 bg-transparent border-none text-white placeholder-indigo-100/60 focus:outline-none focus:ring-0 text-base"
             />
 
             <button
               type="submit"
               disabled={isProcessing || !input.trim()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-lg bg-white text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:hover:bg-white transition-all shadow-lg active:scale-95 flex items-center justify-center"
+              className="p-2.5 mr-2 rounded-lg bg-white text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:hover:bg-white transition-all shadow-lg active:scale-95 flex-shrink-0 flex items-center justify-center"
             >
               {isProcessing && input.trim() ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -135,6 +209,28 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
               )}
             </button>
           </div>
+
+          {/* Auto-complete Suggestions */}
+          {suggestions.length > 0 && (
+            <div className="absolute top-full left-0 mt-2 w-full md:w-64 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-1">
+              <div className="p-2 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-50 border-b border-slate-100">
+                Saved items
+              </div>
+              {suggestions.map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => applySuggestion(s)}
+                  className="w-full text-left px-4 py-3 hover:bg-indigo-50 transition-colors flex items-center justify-between group"
+                >
+                  <span className="font-medium text-slate-700 capitalize group-hover:text-indigo-700">{s.name}</span>
+                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full group-hover:bg-indigo-100 group-hover:text-indigo-600">
+                    ₹{s.rate}/{s.unit || 'unit'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Gallery Upload Button */}
           <button

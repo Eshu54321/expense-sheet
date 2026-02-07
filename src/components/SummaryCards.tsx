@@ -23,6 +23,19 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ expenses, budgets = 
     );
   }, [expenses]);
 
+  const currentMonthExpense = React.useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    return expenses
+      .filter(e => {
+        const d = new Date(e.date);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear && e.amount > 0;
+      })
+      .reduce((sum, curr) => sum + curr.amount, 0);
+  }, [expenses]);
+
   const budgetProgress = React.useMemo(() => {
     if (!budgets.length) return [];
 
@@ -86,6 +99,9 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ expenses, budgets = 
             <div className="w-full bg-slate-100 h-1.5 mt-3 rounded-full overflow-hidden">
               <div className="h-full bg-red-500 rounded-full" style={{ width: '70%' }}></div>
             </div>
+            <p className="text-xs text-slate-500 mt-2 font-medium">
+              📅 This Month: <span className="text-slate-700">₹{currentMonthExpense.toLocaleString('en-IN')}</span>
+            </p>
           </div>
         </div>
 
@@ -134,7 +150,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ expenses, budgets = 
                 <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${b.percentage >= 100 ? 'bg-red-500' :
-                        b.percentage >= 80 ? 'bg-yellow-500' : 'bg-indigo-500'
+                      b.percentage >= 80 ? 'bg-yellow-500' : 'bg-indigo-500'
                       }`}
                     style={{ width: `${b.percentage}%` }}
                   ></div>

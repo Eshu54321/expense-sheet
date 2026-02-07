@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Table, Lightbulb, Database, FileBarChart, RefreshCw, Settings as SettingsIcon, X, LogOut, Users } from 'lucide-react';
+import { LayoutDashboard, Table, Lightbulb, Database, FileBarChart, RefreshCw, Settings as SettingsIcon, X, LogOut, Users, Tag } from 'lucide-react';
+import { ItemRates } from './components/ItemRates';
 import { ExpenseTable } from './components/ExpenseTable';
 import { SummaryCards } from './components/SummaryCards';
 import { Charts } from './components/Charts';
@@ -19,7 +20,7 @@ const generateId = () => crypto.randomUUID();
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'sheet' | 'reports' | 'recurring' | 'lenders' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'sheet' | 'reports' | 'recurring' | 'lenders' | 'settings' | 'rates'>('dashboard');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -380,6 +381,14 @@ const App: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('rates')}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'rates' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+          >
+            <Tag className="w-5 h-5" />
+            <span className="font-medium">Item Rates</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('recurring')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'recurring' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
@@ -461,7 +470,8 @@ const App: React.FC = () => {
                 activeTab === 'reports' ? 'Monthly Reports' :
                   activeTab === 'recurring' ? 'Recurring Rules' :
                     activeTab === 'lenders' ? 'Lenders & Loans' :
-                      activeTab === 'settings' ? 'Settings' : 'Expenses'}
+                      activeTab === 'rates' ? 'Item Rates' :
+                        activeTab === 'settings' ? 'Settings' : 'Expenses'}
             </h2>
             <p className="text-slate-500 text-xs md:text-sm">Personal Finance Sheet • INR (₹)</p>
           </div>
@@ -483,7 +493,7 @@ const App: React.FC = () => {
 
         <div className="max-w-6xl mx-auto space-y-6">
 
-          {(activeTab !== 'reports' && activeTab !== 'recurring' && activeTab !== 'lenders' && activeTab !== 'settings') && <SmartAdd onAdd={handleAddExpenses} />}
+          {(activeTab !== 'reports' && activeTab !== 'recurring' && activeTab !== 'lenders' && activeTab !== 'settings' && activeTab !== 'rates') && <SmartAdd onAdd={handleAddExpenses} />}
 
           {/* Mobile Insight Card */}
           {insight && (
@@ -561,6 +571,10 @@ const App: React.FC = () => {
             <Lenders />
           )}
 
+          {activeTab === 'rates' && (
+            <ItemRates />
+          )}
+
           {activeTab === 'settings' && (
             <Settings
               expenses={expenses}
@@ -593,6 +607,14 @@ const App: React.FC = () => {
           >
             <Table className="w-6 h-6" />
             <span className="text-[10px] font-medium">Transactions</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('rates')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'rates' ? 'text-green-600' : 'text-slate-400'}`}
+          >
+            <Tag className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Rates</span>
           </button>
 
           <button
