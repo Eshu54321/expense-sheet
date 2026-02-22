@@ -112,12 +112,14 @@ export const parseExpenseImage = async (imageBase64: string): Promise<{ expenses
     - 'paymentMethod': Guess the payment method if visible at the bottom, otherwise default to 'Cash'.
     - 'date': The date on the receipt (YYYY-MM-DD).
 
-    For each item in the 'items' array:
+    For each item in the 'items' array (ESSENTIAL FOR RATE TRACKING):
     - name: Item name (e.g., "Tomato")
     - quantity: Quantity string (e.g., "1kg")
-    - rate: Rate per unit if available (e.g., 50). If only total is given, calculate rate if quantity is known, else null.
-    - unit: Unit string (e.g., "kg", "packet").
-    - total: Total amount for this item.
+    - rate: Rate per unit (e.g., 50). You MUST find or calculate this from the receipt.
+    - unit: Unit string (e.g., "kg", "packet", "unit").
+    - total: Total amount for this item line.
+
+    CRITICAL: For every line item in the 'expenses' array, there should be a corresponding entry in the 'items' array if a rate/price per unit can be determined.
 
     Example Output Structure:
     {

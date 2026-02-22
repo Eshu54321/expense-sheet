@@ -117,22 +117,31 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
       reader.onloadend = async () => {
         const base64String = (reader.result as string).split(',')[1];
         try {
-          const { expenses, items } = await parseExpenseImage(base64String);
+          const result = await parseExpenseImage(base64String);
+          console.log("AI Image Parse Result:", result);
+          const { expenses, items } = result;
+
           if (expenses && expenses.length > 0) {
             onAdd(expenses);
 
             // Process collected item rates in background
             if (items && items.length > 0) {
+              console.log(`Tracking rates for ${items.length} items...`);
               try {
-                items.forEach(async (item) => {
+                // Use Promise.all to ensure all upserts are attempted
+                await Promise.all(items.map(async (item) => {
                   if (item.rate && item.rate > 0) {
-                    await supabaseService.upsertItemRate({
+                    console.log(`Updating rate: ${item.name} -> ₹${item.rate}/${item.unit || 'unit'}`);
+                    return supabaseService.upsertItemRate({
                       name: item.name,
                       rate: item.rate,
                       unit: item.unit
                     });
+                  } else {
+                    console.warn(`Skipping ${item.name} - missing rate`, item);
                   }
-                });
+                }));
+                console.log("All rates updated successfully");
               } catch (err) {
                 console.error("Failed to update rates from image", err);
               }
