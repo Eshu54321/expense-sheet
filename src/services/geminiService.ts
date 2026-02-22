@@ -93,25 +93,41 @@ export const parseExpenseNaturalLanguage = async (input: string): Promise<{ expe
   }
 };
 
-export const parseExpenseImage = async (imageBase64: string): Promise<Omit<Expense, 'id'>[]> => {
+export const parseExpenseImage = async (imageBase64: string): Promise<{ expenses: Omit<Expense, 'id'>[], items: { name: string, quantity: string, rate: number, total: number, unit: string | null }[] }> => {
   const ai = getClient();
 
   const prompt = `
-    Analyze this receipt/bill image and extract the expense details into a structured JSON array.
+    Analyze this receipt/bill image and extract the expense details into a structured JSON object.
     Context: The user is in India. Currency is INR (₹).
     Current Date: ${new Date().toISOString().split('T')[0]}.
     If the date is visible on the receipt, use it. Otherwise use current date.
 
-    CRITICAL INSTRUCTION: You MUST list every single line item on the bill as a separate expense object.
-    Do NOT just give the total amount.
+    CRITICAL INSTRUCTION: You MUST list every single line item on the bill as a separate expense object in the 'expenses' array.
+    Also, extract detailed item information into a separate 'items' array for any item that has a price/rate.
     
-    For each item:
+    For each expense item:
     - 'description': The item name followed by quantity/rate if visible (e.g., "Basmati Rice (5kg)", "Sugar (1kg @ 40/kg)").
     - 'amount': The price for that specific item line.
     - 'category': Guess the specific category for that item (e.g., 'Food & Dining' for vegetables, 'Health' for medicines).
     - 'paymentMethod': Guess the payment method if visible at the bottom, otherwise default to 'Cash'.
+    - 'date': The date on the receipt (YYYY-MM-DD).
 
-    If the image is not a clear bill with items, or if it is just a payment screenshot, then just extract the total amount as a single entry.
+    For each item in the 'items' array:
+    - name: Item name (e.g., "Tomato")
+    - quantity: Quantity string (e.g., "1kg")
+    - rate: Rate per unit if available (e.g., 50). If only total is given, calculate rate if quantity is known, else null.
+    - unit: Unit string (e.g., "kg", "packet").
+    - total: Total amount for this item.
+
+    Example Output Structure:
+    {
+      "expenses": [ ...standard expenses... ],
+      "items": [
+        { "name": "Tomato", "quantity": "1kg", "rate": 50, "unit": "kg", "total": 50 }
+      ]
+    }
+
+    If the image is not a clear bill with items (e.g., just a payment screenshot), extract the total amount as a single entry in 'expenses' and leave 'items' empty.
   `;
 
   try {
@@ -124,24 +140,44 @@ export const parseExpenseImage = async (imageBase64: string): Promise<Omit<Expen
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              description: { type: Type.STRING },
-              amount: { type: Type.NUMBER },
-              category: { type: Type.STRING },
-              date: { type: Type.STRING, description: "YYYY-MM-DD" },
-              paymentMethod: { type: Type.STRING }
+          type: Type.OBJECT,
+          properties: {
+            expenses: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  description: { type: Type.STRING },
+                  amount: { type: Type.NUMBER },
+                  category: { type: Type.STRING },
+                  date: { type: Type.STRING, description: "YYYY-MM-DD" },
+                  paymentMethod: { type: Type.STRING }
+                },
+                required: ["description", "amount", "category", "date", "paymentMethod"]
+              }
             },
-            required: ["description", "amount", "category", "date", "paymentMethod"]
-          }
+            items: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  quantity: { type: Type.STRING },
+                  rate: { type: Type.NUMBER },
+                  unit: { type: Type.STRING, nullable: true },
+                  total: { type: Type.NUMBER }
+                },
+                required: ["name", "total"]
+              }
+            }
+          },
+          required: ["expenses", "items"]
         }
       }
     });
 
     const text = response.text;
-    if (!text) return [];
+    if (!text) return { expenses: [], items: [] };
     return JSON.parse(text);
   } catch (error) {
     console.error("Gemini Image Parse Error:", error);
