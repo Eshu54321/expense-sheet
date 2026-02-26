@@ -3,6 +3,7 @@ import { Sparkles, ArrowRight, Loader2, AlertCircle, ExternalLink, Camera, Image
 import { parseExpenseNaturalLanguage, parseExpenseImage } from '../services/geminiService';
 import { supabaseService } from '../services/supabaseService';
 import { Expense, ItemRate } from '../types';
+import { ReviewParsedExpensesModal } from './ReviewParsedExpensesModal';
 
 interface SmartAddProps {
   onAdd: (expenses: Omit<Expense, 'id'>[]) => void;
@@ -14,6 +15,11 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
   const [error, setError] = useState<React.ReactNode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  // Review Modal State
+  const [reviewExpenses, setReviewExpenses] = useState<Omit<Expense, 'id'>[] | null>(null);
+  const [reviewItems, setReviewItems] = useState<{ name: string, quantity: string, rate: number, total: number, unit: string | null }[]>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Auto-complete state
   const [rates, setRates] = useState<ItemRate[]>([]);
@@ -116,36 +122,16 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = (reader.result as string).split(',')[1];
+        setPreviewImage(reader.result as string);
+
         try {
           const result = await parseExpenseImage(base64String);
           console.log("AI Image Parse Result:", result);
           const { expenses, items } = result;
 
           if (expenses && expenses.length > 0) {
-            onAdd(expenses);
-
-            // Process collected item rates in background
-            if (items && items.length > 0) {
-              console.log(`Tracking rates for ${items.length} items...`);
-              try {
-                // Use Promise.all to ensure all upserts are attempted
-                await Promise.all(items.map(async (item) => {
-                  if (item.rate && item.rate > 0) {
-                    console.log(`Updating rate: ${item.name} -> ₹${item.rate}/${item.unit || 'unit'}`);
-                    return supabaseService.upsertItemRate({
-                      name: item.name,
-                      rate: item.rate,
-                      unit: item.unit
-                    });
-                  } else {
-                    console.warn(`Skipping ${item.name} - missing rate`, item);
-                  }
-                }));
-                console.log("All rates updated successfully");
-              } catch (err) {
-                console.error("Failed to update rates from image", err);
-              }
-            }
+            setReviewItems(items || []);
+            setReviewExpenses(expenses);
           } else {
             setError("Could not extract details from image.");
           }
@@ -154,6 +140,7 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
         } finally {
           setIsProcessing(false);
           if (fileInputRef.current) fileInputRef.current.value = '';
+          if (galleryInputRef.current) galleryInputRef.current.value = '';
         }
       };
       reader.readAsDataURL(file);
@@ -161,6 +148,38 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
       setError("Failed to read image file.");
       setIsProcessing(false);
     }
+  };
+
+  const handleConfirmReview = async (finalExpenses: Omit<Expense, 'id'>[]) => {
+    onAdd(finalExpenses);
+
+    // Process collected item rates in background
+    if (reviewItems && reviewItems.length > 0) {
+      console.log(`Tracking rates for ${reviewItems.length} items...`);
+      try {
+        await Promise.all(reviewItems.map(async (item) => {
+          if (item.rate && item.rate > 0) {
+            return supabaseService.upsertItemRate({
+              name: item.name,
+              rate: item.rate,
+              unit: item.unit
+            });
+          }
+        }));
+      } catch (err) {
+        console.error("Failed to update rates from image overview", err);
+      }
+    }
+
+    setReviewExpenses(null);
+    setReviewItems([]);
+    setPreviewImage(null);
+  };
+
+  const handleCancelReview = () => {
+    setReviewExpenses(null);
+    setReviewItems([]);
+    setPreviewImage(null);
   };
 
   const handleError = (err: any) => {
@@ -322,6 +341,15 @@ export const SmartAdd: React.FC<SmartAddProps> = ({ onAdd }) => {
           </div>
         )}
       </div>
+
+      {reviewExpenses && (
+        <ReviewParsedExpensesModal
+          expenses={reviewExpenses}
+          imagePreviewUrl={previewImage}
+          onConfirm={handleConfirmReview}
+          onCancel={handleCancelReview}
+        />
+      )}
     </div>
   );
 };

@@ -9,6 +9,15 @@ export enum Category {
   OTHER = 'Miscellaneous'
 }
 
+// --- Multi-User Profiles ---
+export interface Profile {
+  id: string;
+  name: string;
+  avatar?: string;
+  color?: string; // Hex color for UI charts
+  isDefault?: boolean;
+}
+
 export interface Expense {
   id: string;
   date: string; // YYYY-MM-DD
@@ -16,6 +25,7 @@ export interface Expense {
   category: Category | string;
   amount: number;
   paymentMethod: string;
+  profileId?: string; // Optional for backward compatibility, required for multi-user
 }
 
 export interface ExpenseSummary {
@@ -40,6 +50,7 @@ export interface FilterConfig {
   type: 'all' | 'income' | 'expense';
   minAmount: string;
   maxAmount: string;
+  profileId?: string; // Add filter for profile
 }
 
 export type Frequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -52,6 +63,7 @@ export interface RecurringExpense {
   frequency: Frequency;
   nextDueDate: string; // YYYY-MM-DD
   active: boolean;
+  profileId?: string; // Tie rules to profiles
 }
 
 export interface Budget {
@@ -59,6 +71,7 @@ export interface Budget {
   category: string;
   amount: number;
   period: 'monthly';
+  profileId?: string; // Budgets can be personal or shared (null)
 }
 
 export interface Lender {
@@ -81,6 +94,29 @@ export interface LoanTransaction {
   type: 'borrow' | 'repay';
   amount: number;
   description: string;
+}
+
+// --- Asset Tracking Types ---
+
+export interface Asset {
+  id: string;
+  name: string;
+  type: 'bank' | 'investment' | 'real_estate' | 'crypto' | 'vehicle' | 'other';
+  currentValue: number;
+  purchaseValue?: number;
+  purchaseDate?: string;
+  notes?: string;
+  lastUpdated: string; // ISO string
+  profileId?: string; // Track who owns the asset
+}
+
+export interface AssetTransaction {
+  id: string;
+  assetId: string;
+  date: string; // YYYY-MM-DD
+  type: 'deposit' | 'withdrawal' | 'appreciation' | 'depreciation';
+  amount: number;
+  description?: string;
 }
 
 // --- Google Sheets Integration Types ---

@@ -1,14 +1,48 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #f8fafc;
-  /* Slate 50 */
-  color: #0f172a;
-  /* Slate 900 */
-  -webkit-tap-highlight-color: transparent;
+@layer base {
+  :root {
+    --bg-primary: #f8fafc;
+    --text-primary: #0f172a;
+    --accent-color: #16a34a;
+    /* default green-600 */
+    --accent-hover: #15803d;
+    /* default green-700 */
+  }
+
+  :root.dark {
+    --bg-primary: #0f172a;
+    --text-primary: #f8fafc;
+  }
+
+  /* Accent Colors */
+  :root[data-theme-accent="indigo"] {
+    --accent-color: #4f46e5;
+    --accent-hover: #4338ca;
+  }
+
+  :root[data-theme-accent="rose"] {
+    --accent-color: #e11d48;
+    --accent-hover: #be123c;
+  }
+
+  :root[data-theme-accent="amber"] {
+    --accent-color: #d97706;
+    --accent-hover: #b45309;
+  }
+
+  :root[data-theme-accent="cyan"] {
+    --accent-color: #0891b2;
+    --accent-hover: #0e7490;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.3s, color 0.3s;
+  }
 }
 
 /* Custom scrollbar for table and containers */

@@ -1,82 +1,134 @@
-import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Table, Lightbulb, Database, FileBarChart, RefreshCw, Settings as SettingsIcon, X, LogOut, Users, Tag } from 'lucide-react';
-import { ItemRates } from './components/ItemRates';
-import { ExpenseTable } from './components/ExpenseTable';
+import React, { useState, useEffect, useMemo } from 'react';
+import { LayoutDashboard, Table, Lightbulb, Database, FileBarChart, RefreshCw, Settings as SettingsIcon, X, LogOut, Users, Tag, ChevronDown } from 'lucide-react';
 import { SummaryCards } from './components/SummaryCards';
-import { Charts } from './components/Charts';
+import { ItemRates } from './components/ItemRates';
 import { SmartAdd } from './components/SmartAdd';
-import { Reports } from './components/Reports';
+import { Charts } from './components/Charts';
+import { ExpenseTable } from './components/ExpenseTable';
+import { Budgets } from './components/Budgets';
 import { RecurringExpenses } from './components/RecurringExpenses';
 import { Settings } from './components/Settings';
-import { Lenders } from './components/Lenders';
+import { Lenders } from './features/Lenders';
+import { Assets } from './features/Assets';
 import { Auth } from './components/Auth';
-import { generateSpendingInsights } from './services/geminiService';
+import { useAuth } from './hooks/useAuth';
 import { supabaseService } from './services/supabaseService';
+import { useProfile } from './contexts/ProfileContext';
 import { supabase } from './lib/supabase';
-import { Expense, RecurringExpense, Budget } from './types';
+import { generateSpendingInsights } from './services/geminiService';
 
+// --- Types ---
+import { Expense, RecurringExpense, Budget, Category, Frequency } from './types';
 
 const generateId = () => crypto.randomUUID();
 
-const App: React.FC = () => {
-  const [session, setSession] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'sheet' | 'reports' | 'recurring' | 'lenders' | 'settings' | 'rates'>('dashboard');
+// ... (Keep existing processRecurringExpenses function) ...
+const processRecurringExpenses = (expenses: Expense[], recurring: RecurringExpense[]): Expense[] => {
+  const newExpenses: Expense[] = [];
+  const today = new Date();
+
+  recurring.forEach(rule => {
+    if (!rule.active) return;
+
+    let nextDate = new Date(rule.nextDueDate);
+    while (nextDate <= today) {
+      newExpenses.push({
+        id: crypto.randomUUID(),
+        date: nextDate.toISOString().split('T')[0],
+        description: rule.description,
+        amount: rule.amount,
+        category: rule.category,
+        paymentMethod: 'Auto-deduct',
+        profileId: rule.profileId || undefined
+      });
+
+      switch (rule.frequency) {
+        case 'daily': nextDate.setDate(nextDate.getDate() + 1); break;
+        case 'weekly': nextDate.setDate(nextDate.getDate() + 7); break;
+        case 'monthly': nextDate.setMonth(nextDate.getMonth() + 1); break;
+        case 'yearly': nextDate.setFullYear(nextDate.getFullYear() + 1); break;
+      }
+    }
+    rule.nextDueDate = nextDate.toISOString().split('T')[0];
+  });
+
+  return newExpenses;
+};
+
+type TabState = 'expenses' | 'recurring' | 'lenders' | 'budgets' | 'assets' | 'analytics' | 'settings';
+
+function App() {
+  const { user, loading: authLoading } = useAuth();
+
+  // Data State
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [insight, setInsight] = useState<string>('');
   const [isLoadingInsight, setIsLoadingInsight] = useState(false);
   const [dbStatus, setDbStatus] = useState<'Initializing' | 'Syncing' | 'Synced' | 'Error'>('Initializing');
+  const { activeProfile, profiles, setActiveProfileId } = useProfile();
 
+  // Selected Tab State
+  const [activeTab, setActiveTab] = useState<TabState>('expenses');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Filter expenses by active profile
+  const filteredExpenses = useMemo(() => {
+    if (!activeProfile) return expenses;
+    return expenses.filter(e => !e.profileId || e.profileId === activeProfile.id || e.profileId === 'shared');
+  }, [expenses, activeProfile]);
+
+  const filteredBudgets = useMemo(() => {
+    if (!activeProfile) return budgets;
+    return budgets.filter(b => !b.profileId || b.profileId === activeProfile.id || b.profileId === 'shared');
+  }, [budgets, activeProfile]);
+
+  const filteredRecurring = useMemo(() => {
+    if (!activeProfile) return recurringExpenses;
+    return recurringExpenses.filter(r => !r.profileId || r.profileId === activeProfile.id || r.profileId === 'shared');
+  }, [recurringExpenses, activeProfile]);
+
+  // Use the filtered versions for standard operations unless it's settings
+  const displayExpenses = activeProfile ? filteredExpenses : expenses;
+  const displayBudgets = activeProfile ? filteredBudgets : budgets;
+  const displayRecurring = activeProfile ? filteredRecurring : recurringExpenses;
+
+  // --- Data Loading ---
+  const loadData = async () => {
+    try {
+      setDbStatus('Syncing');
+      const loadedExpenses = await supabaseService.getExpenses();
+      const loadedRecurring = await supabaseService.getRecurringExpenses();
+      const loadedBudgets = await supabaseService.getBudgets();
+
+      setExpenses(loadedExpenses);
+      setRecurringExpenses(loadedRecurring);
+      setBudgets(loadedBudgets);
+      setDbStatus('Synced');
+    } catch (error) {
+      console.error("Failed to load data", error);
+      setDbStatus('Error');
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+  }, [user]);
 
   // Undo State
   const [lastAddedIds, setLastAddedIds] = useState<string[]>([]);
   const [showUndo, setShowUndo] = useState(false);
   const [undoTimer, setUndoTimer] = useState<any>(null);
 
-  // Auth Check
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Initialize DB and Load Data
-  useEffect(() => {
-    if (!session) return;
-
-    const initData = async () => {
-      try {
-        setDbStatus('Syncing');
-        const loadedExpenses = await supabaseService.getExpenses();
-        const loadedRecurring = await supabaseService.getRecurringExpenses();
-        const loadedBudgets = await supabaseService.getBudgets();
-
-        setExpenses(loadedExpenses);
-        setRecurringExpenses(loadedRecurring);
-        setBudgets(loadedBudgets);
-        setDbStatus('Synced');
-      } catch (error) {
-        console.error("Failed to load data", error);
-        setDbStatus('Error');
-      }
-    };
-    initData();
-  }, [session]);
-
 
 
   // Process Recurring Expenses Logic (Runs once data is loaded)
   useEffect(() => {
-    if (recurringExpenses.length === 0 || dbStatus !== 'Synced' || !session) return;
+    if (recurringExpenses.length === 0 || dbStatus !== 'Synced' || !user) return;
 
     const processRecurring = async () => {
       const today = new Date();
@@ -148,7 +200,7 @@ const App: React.FC = () => {
 
     processRecurring();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dbStatus, session]);
+  }, [dbStatus, user]);
 
   // --- CRUD Handlers ---
 
@@ -212,6 +264,38 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAddExpense = async (expense: Omit<Expense, 'id'>) => {
+    try {
+      const newExpense: Expense = {
+        ...expense,
+        id: crypto.randomUUID(),
+        profileId: activeProfile?.id
+      };
+
+      await supabaseService.addExpense(newExpense);
+      setExpenses(prev => [...prev, newExpense]);
+    } catch (error) {
+      console.error('Failed to add expense:', error);
+      alert('Failed to save expense to cloud. Please try again.');
+    }
+  };
+
+  const handleAddRecurring = async (expense: Omit<RecurringExpense, 'id'>) => {
+    try {
+      const newRecurring: RecurringExpense = {
+        ...expense,
+        id: crypto.randomUUID(),
+        profileId: activeProfile?.id
+      };
+
+      await supabaseService.addRecurringExpense(newRecurring);
+      setRecurringExpenses(prev => [...prev, newRecurring]);
+    } catch (error) {
+      console.error('Failed to add recurring expense:', error);
+      alert('Failed to save recurring expense to cloud. Please try again.');
+    }
+  };
+
   const handleDeleteExpense = async (id: string) => {
     // Optimistic Update
     const previous = expenses;
@@ -229,18 +313,6 @@ const App: React.FC = () => {
   };
 
   // --- Recurring Handlers ---
-
-  const handleAddRecurring = async (data: Omit<RecurringExpense, 'id'>) => {
-    const newRule: RecurringExpense = { ...data, id: generateId() };
-    setDbStatus('Syncing');
-    try {
-      await supabaseService.addRecurringExpense(newRule);
-      setRecurringExpenses(prev => [...prev, newRule]);
-      setDbStatus('Synced');
-    } catch (err) {
-      setDbStatus('Error');
-    }
-  };
 
   const handleDeleteRecurring = async (id: string) => {
     setDbStatus('Syncing');
@@ -346,7 +418,7 @@ const App: React.FC = () => {
     setIsLoadingInsight(false);
   };
 
-  if (!session) {
+  if (!user) {
     return <Auth />;
   }
 
@@ -365,32 +437,32 @@ const App: React.FC = () => {
         <nav className="p-4 space-y-2 flex-1">
           {/* ... existing nav buttons ... */}
           <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+            onClick={() => setActiveTab('expenses')}
+            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'expenses' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
           >
             <LayoutDashboard className="w-5 h-5" />
-            <span className="font-medium">Dashboard</span>
+            <span className="font-medium">Expenses</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('sheet')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'sheet' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+            onClick={() => setActiveTab('assets')}
+            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'assets' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
           >
             <Table className="w-5 h-5" />
-            <span className="font-medium">Transactions</span>
+            <span className="font-medium">Assets</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('rates')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'rates' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+            onClick={() => setActiveTab('analytics')}
+            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'analytics' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
           >
-            <Tag className="w-5 h-5" />
-            <span className="font-medium">Item Rates</span>
+            <FileBarChart className="w-5 h-5" />
+            <span className="font-medium">Analytics</span>
           </button>
 
           <button
             onClick={() => setActiveTab('recurring')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'recurring' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'recurring' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
           >
             <RefreshCw className="w-5 h-5" />
             <span className="font-medium">Recurring</span>
@@ -398,23 +470,15 @@ const App: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('lenders')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'lenders' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'lenders' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
           >
             <Users className="w-5 h-5" />
             <span className="font-medium">Lenders</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('reports')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'reports' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
-            <FileBarChart className="w-5 h-5" />
-            <span className="font-medium">Reports</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('settings')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'settings' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
           >
             <SettingsIcon className="w-5 h-5" />
             <span className="font-medium">Settings</span>
@@ -466,12 +530,13 @@ const App: React.FC = () => {
         <header className="flex justify-between items-center mb-6 md:mb-8">
           <div>
             <h2 className="text-xl md:text-2xl font-bold text-slate-800">
-              {activeTab === 'dashboard' ? 'Overview' :
-                activeTab === 'reports' ? 'Monthly Reports' :
-                  activeTab === 'recurring' ? 'Recurring Rules' :
-                    activeTab === 'lenders' ? 'Lenders & Loans' :
-                      activeTab === 'rates' ? 'Item Rates' :
-                        activeTab === 'settings' ? 'Settings' : 'Expenses'}
+              {activeTab === 'expenses' ? 'Overview' :
+                activeTab === 'recurring' ? 'Recurring Rules' :
+                  activeTab === 'lenders' ? 'Lenders & Loans' :
+                    activeTab === 'budgets' ? 'Budgeting' :
+                      activeTab === 'analytics' ? 'Analytics' :
+                        activeTab === 'assets' ? 'Tracked Assets' :
+                          activeTab === 'settings' ? 'Settings' : 'Expenses'}
             </h2>
             <p className="text-slate-500 text-xs md:text-sm">Personal Finance Sheet • INR (₹)</p>
           </div>
@@ -486,14 +551,14 @@ const App: React.FC = () => {
             </button>
 
             <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xs border border-green-200">
-              {session.user.email?.charAt(0).toUpperCase()}
+              {user.email?.charAt(0).toUpperCase()}
             </div>
           </div>
         </header>
 
         <div className="max-w-6xl mx-auto space-y-6">
 
-          {(activeTab !== 'reports' && activeTab !== 'recurring' && activeTab !== 'lenders' && activeTab !== 'settings' && activeTab !== 'rates') && <SmartAdd onAdd={handleAddExpenses} />}
+          {(activeTab !== 'recurring' && activeTab !== 'lenders' && activeTab !== 'settings') && <SmartAdd onAdd={handleAddExpenses} />}
 
           {/* Mobile Insight Card */}
           {insight && (
@@ -506,52 +571,23 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'dashboard' && (
+          {activeTab === 'expenses' && (
             <div className="space-y-6">
-              <SummaryCards expenses={expenses} budgets={budgets} />
-              <Charts expenses={expenses} />
-              {/* Recent Transactions Preview */}
-              <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-slate-800">Recent Activity</h3>
-                  <button onClick={() => setActiveTab('sheet')} className="text-sm text-green-600 hover:text-green-700 font-medium">View Sheet</button>
+              <SummaryCards expenses={displayExpenses} budgets={displayBudgets} />
+              <Charts expenses={displayExpenses} />
+
+              {/* Full Interactive Expense Table */}
+              <div className="mt-8">
+                <div className="flex justify-between items-center mb-4 px-1">
+                  <h3 className="text-lg md:text-xl font-bold text-slate-800 tracking-tight">All Transactions</h3>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-600">
-                    <thead>
-                      <tr className="border-b border-slate-100">
-                        <th className="pb-3 font-semibold whitespace-nowrap px-2">Date</th>
-                        <th className="pb-3 font-semibold whitespace-nowrap px-2">Description</th>
-                        <th className="pb-3 font-semibold whitespace-nowrap px-2">Category</th>
-                        <th className="pb-3 font-semibold whitespace-nowrap px-2">Method</th>
-                        <th className="pb-3 font-semibold text-right whitespace-nowrap px-2">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {expenses.slice(0, 5).map(e => (
-                        <tr key={e.id}>
-                          <td className="py-3 px-2 whitespace-nowrap">{e.date}</td>
-                          <td className="py-3 px-2 min-w-[150px]">{e.description}</td>
-                          <td className="py-3 px-2 whitespace-nowrap">{e.category}</td>
-                          <td className="py-3 px-2 whitespace-nowrap text-slate-500 text-xs">{e.paymentMethod}</td>
-                          <td className={`py-3 px-2 text-right font-medium whitespace-nowrap ${e.amount < 0 ? 'text-green-600' : ''}`}>
-                            ₹{Math.abs(e.amount).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ExpenseTable
+                  expenses={displayExpenses}
+                  onDelete={handleDeleteExpense}
+                  onUpdate={handleUpdateExpense}
+                />
               </div>
             </div>
-          )}
-
-          {activeTab === 'sheet' && (
-            <ExpenseTable
-              expenses={expenses}
-              onDelete={handleDeleteExpense}
-              onUpdate={handleUpdateExpense}
-            />
           )}
 
           {activeTab === 'recurring' && (
@@ -563,15 +599,19 @@ const App: React.FC = () => {
             />
           )}
 
-          {activeTab === 'reports' && (
-            <Reports expenses={expenses} />
-          )}
-
           {activeTab === 'lenders' && (
             <Lenders />
           )}
 
-          {activeTab === 'rates' && (
+          {activeTab === 'budgets' && (
+            <Budgets />
+          )}
+
+          {activeTab === 'assets' && (
+            <Assets />
+          )}
+
+          {activeTab === 'analytics' && (
             <ItemRates />
           )}
 
@@ -594,27 +634,27 @@ const App: React.FC = () => {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 px-6 py-3 pb-6 safe-area-bottom shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <div className="flex justify-between items-center">
           <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`flex flex-col items-center space-y-1 ${activeTab === 'dashboard' ? 'text-green-600' : 'text-slate-400'}`}
+            onClick={() => setActiveTab('expenses')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'expenses' ? 'text-green-600' : 'text-slate-400'}`}
           >
             <LayoutDashboard className="w-6 h-6" />
-            <span className="text-[10px] font-medium">Overview</span>
+            <span className="text-[10px] font-medium">Expenses</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('sheet')}
-            className={`flex flex-col items-center space-y-1 ${activeTab === 'sheet' ? 'text-green-600' : 'text-slate-400'}`}
+            onClick={() => setActiveTab('assets')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'assets' ? 'text-green-600' : 'text-slate-400'}`}
           >
             <Table className="w-6 h-6" />
-            <span className="text-[10px] font-medium">Transactions</span>
+            <span className="text-[10px] font-medium">Assets</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('rates')}
-            className={`flex flex-col items-center space-y-1 ${activeTab === 'rates' ? 'text-green-600' : 'text-slate-400'}`}
+            onClick={() => setActiveTab('analytics')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'analytics' ? 'text-green-600' : 'text-slate-400'}`}
           >
             <Tag className="w-6 h-6" />
-            <span className="text-[10px] font-medium">Rates</span>
+            <span className="text-[10px] font-medium">Analytics</span>
           </button>
 
           <button
@@ -631,14 +671,6 @@ const App: React.FC = () => {
           >
             <Users className="w-6 h-6" />
             <span className="text-[10px] font-medium">Lenders</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('reports')}
-            className={`flex flex-col items-center space-y-1 ${activeTab === 'reports' ? 'text-green-600' : 'text-slate-400'}`}
-          >
-            <FileBarChart className="w-6 h-6" />
-            <span className="text-[10px] font-medium">Reports</span>
           </button>
 
           <button

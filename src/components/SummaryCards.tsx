@@ -1,6 +1,9 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, AlertCircle, Landmark } from 'lucide-react';
 import { Expense, Budget } from '../types';
+import { useAssets } from '../hooks/queries/useAssets';
+import { useLenders } from '../hooks/queries/useLenders';
+import { useProfile } from '../contexts/ProfileContext';
 
 interface SummaryCardsProps {
   expenses: Expense[];
@@ -8,6 +11,24 @@ interface SummaryCardsProps {
 }
 
 export const SummaryCards: React.FC<SummaryCardsProps> = ({ expenses, budgets = [] }) => {
+  const { data: assets = [] } = useAssets();
+  const { data: lenders = [] } = useLenders();
+  const { activeProfile } = useProfile();
+
+  // Filter query data by active profile
+  const filteredAssets = React.useMemo(() => {
+    if (!activeProfile) return assets;
+    return assets.filter(a => !a.profileId || a.profileId === activeProfile.id || a.profileId === 'shared');
+  }, [assets, activeProfile]);
+
+  const filteredLenders = React.useMemo(() => {
+    // Lenders aren't inherently profile-aware in DB yet based on exact hooks, 
+    // but if they added profileId later, this ensures forward compatibility.
+    // For now, if no profileId exists on lenders, it returns all.
+    if (!activeProfile) return lenders;
+    return lenders.filter((l: any) => !l.profileId || l.profileId === activeProfile.id || l.profileId === 'shared');
+  }, [lenders, activeProfile]);
+
   const summary = React.useMemo(() => {
     return expenses.reduce(
       (acc, curr) => {
@@ -53,20 +74,48 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ expenses, budgets = 
     }));
   }, [expenses, budgets]);
 
+  const netWorth = React.useMemo(() => {
+    const totalAssetValue = filteredAssets.reduce((sum, a) => sum + a.currentValue, 0);
+    // Positive balance means we owe them (liability). Negative means they owe us (asset).
+    const totalLiabilities = filteredLenders.reduce((sum, l) => sum + l.currentBalance, 0);
+
+    // Net Worth = Cash(Balance) + Total Assets - Total Liabilities
+    return summary.balance + totalAssetValue - totalLiabilities;
+  }, [summary.balance, filteredAssets, filteredLenders]);
+
   return (
     <div className="space-y-6">
       {/* Mobile: Horizontal Scroll (Carousel). Desktop: Grid */}
-      <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 md:grid md:grid-cols-3 md:gap-6 md:pb-0 no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-6 md:pb-0 no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
 
-        {/* Balance Card - Premium Dark Look */}
+        {/* Net Worth Card */}
+        <div className="min-w-[85%] md:min-w-0 snap-center bg-gradient-to-br from-indigo-900 to-blue-900 p-6 rounded-2xl shadow-lg text-white flex flex-col justify-between h-[160px] relative overflow-hidden group ring-1 ring-white/10">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl group-hover:bg-white/10 transition-all"></div>
+
+          <div className="flex items-center space-x-3 z-10">
+            <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+              <Landmark className="w-5 h-5 text-blue-300" />
+            </div>
+            <span className="text-blue-100 font-medium text-sm">Net Worth</span>
+          </div>
+
+          <div className="z-10">
+            <p className={`text-3xl font-bold tracking-tight ${netWorth < 0 ? 'text-red-300' : 'text-white'}`}>
+              {netWorth < 0 ? '-' : ''}₹{Math.abs(netWorth).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-blue-200 text-xs mt-1">Assets + Cash - Liabilities</p>
+          </div>
+        </div>
+
+        {/* Balance Card */}
         <div className="min-w-[85%] md:min-w-0 snap-center bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl shadow-lg text-white flex flex-col justify-between h-[160px] relative overflow-hidden group ring-1 ring-white/10">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl group-hover:bg-white/10 transition-all"></div>
 
           <div className="flex items-center space-x-3 z-10">
             <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
-              <Wallet className="w-5 h-5 text-indigo-300" />
+              <Wallet className="w-5 h-5 text-slate-300" />
             </div>
-            <span className="text-indigo-100 font-medium text-sm">Total Balance</span>
+            <span className="text-slate-100 font-medium text-sm">Cash Balance</span>
           </div>
 
           <div className="z-10">

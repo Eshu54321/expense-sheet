@@ -1,7 +1,75 @@
 import { supabase } from '../lib/supabase';
-import { Expense, RecurringExpense, Budget, Lender, LoanTransaction, ItemRate, PriceHistory } from '../types';
+import { Expense, RecurringExpense, Budget, Lender, LoanTransaction, ItemRate, PriceHistory, Asset, AssetTransaction, Profile } from '../types';
 
 export const supabaseService = {
+    // --- Profiles ---
+
+    async getProfiles(): Promise<Profile[]> {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        return (data || []).map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            avatar: item.avatar,
+            color: item.color,
+            isDefault: item.is_default
+        }));
+    },
+
+    async createProfile(profile: Profile): Promise<void> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { error } = await supabase
+            .from('profiles')
+            .insert({
+                id: profile.id,
+                user_id: user.id,
+                name: profile.name,
+                avatar: profile.avatar,
+                color: profile.color,
+                is_default: profile.isDefault
+            });
+
+        if (error) throw error;
+    },
+
+    async updateProfile(id: string, updates: Partial<Profile>): Promise<void> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const dbUpdates: any = {};
+        if (updates.name !== undefined) dbUpdates.name = updates.name;
+        if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
+        if (updates.color !== undefined) dbUpdates.color = updates.color;
+        if (updates.isDefault !== undefined) dbUpdates.is_default = updates.isDefault;
+
+        const { error } = await supabase
+            .from('profiles')
+            .update(dbUpdates)
+            .eq('id', id)
+            .eq('user_id', user.id);
+
+        if (error) throw error;
+    },
+
+    async deleteProfile(id: string): Promise<void> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { error } = await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', user.id);
+
+        if (error) throw error;
+    },
     // --- Expenses ---
 
     async getExpenses(): Promise<Expense[]> {
@@ -18,7 +86,8 @@ export const supabaseService = {
             description: item.description,
             category: item.category,
             amount: item.amount,
-            paymentMethod: item.payment_method
+            paymentMethod: item.payment_method,
+            profileId: item.profile_id
         }));
     },
 
@@ -33,7 +102,8 @@ export const supabaseService = {
             description: expense.description,
             category: expense.category,
             amount: expense.amount,
-            payment_method: expense.paymentMethod
+            payment_method: expense.paymentMethod,
+            profile_id: expense.profileId
         }));
 
         const { error } = await supabase
@@ -55,7 +125,8 @@ export const supabaseService = {
                 description: expense.description,
                 category: expense.category,
                 amount: expense.amount,
-                payment_method: expense.paymentMethod
+                payment_method: expense.paymentMethod,
+                profile_id: expense.profileId
             })
             .eq('id', expense.id);
 
@@ -87,7 +158,8 @@ export const supabaseService = {
             category: item.category,
             frequency: item.frequency,
             nextDueDate: item.next_due_date,
-            active: item.active
+            active: item.active,
+            profileId: item.profile_id
         }));
     },
 
@@ -106,7 +178,8 @@ export const supabaseService = {
                     category: expense.category,
                     frequency: expense.frequency,
                     next_due_date: expense.nextDueDate,
-                    active: expense.active
+                    active: expense.active,
+                    profile_id: expense.profileId
                 }
             ]);
 
@@ -122,7 +195,8 @@ export const supabaseService = {
                 category: expense.category,
                 frequency: expense.frequency,
                 next_due_date: expense.nextDueDate,
-                active: expense.active
+                active: expense.active,
+                profile_id: expense.profileId
             })
             .eq('id', expense.id);
 
@@ -146,7 +220,13 @@ export const supabaseService = {
             .select('*');
 
         if (error) throw error;
-        return data || [];
+        return (data || []).map((item: any) => ({
+            id: item.id,
+            category: item.category,
+            amount: item.amount,
+            period: item.period,
+            profileId: item.profile_id
+        }));
     },
 
     async upsertBudget(budget: Budget): Promise<void> {
@@ -160,8 +240,9 @@ export const supabaseService = {
                 user_id: user.id,
                 category: budget.category,
                 amount: budget.amount,
-                period: budget.period
-            }, { onConflict: 'user_id, category' });
+                period: budget.period,
+                profile_id: budget.profileId
+            }, { onConflict: 'user_id, category, profile_id' }); // Note: DB constraint needs adjustment for profile_id if used in unique constraint
 
         if (error) throw error;
     },
@@ -404,5 +485,126 @@ export const supabaseService = {
             .delete()
             .eq('user_id', user.id)
             .eq('name', name);
+    },
+
+    // --- Assets ---
+
+    async getAssets(): Promise<Asset[]> {
+        const { data, error } = await supabase
+            .from('assets')
+            .select('*')
+            .order('name', { ascending: true });
+
+        if (error) throw error;
+
+        return (data || []).map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            type: item.type,
+            currentValue: Number(item.current_value),
+            purchaseValue: item.purchase_value ? Number(item.purchase_value) : undefined,
+            purchaseDate: item.purchase_date,
+            notes: item.notes,
+            lastUpdated: item.last_updated,
+            profileId: item.profile_id
+        }));
+    },
+
+    async addAsset(asset: Asset): Promise<void> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { error } = await supabase
+            .from('assets')
+            .insert({
+                id: asset.id,
+                user_id: user.id,
+                name: asset.name,
+                type: asset.type,
+                current_value: asset.currentValue,
+                purchase_value: asset.purchaseValue,
+                purchase_date: asset.purchaseDate,
+                notes: asset.notes,
+                last_updated: new Date().toISOString(),
+                profile_id: asset.profileId
+            });
+
+        if (error) throw error;
+    },
+
+    async updateAsset(asset: Asset): Promise<void> {
+        const { error } = await supabase
+            .from('assets')
+            .update({
+                name: asset.name,
+                type: asset.type,
+                current_value: asset.currentValue,
+                purchase_value: asset.purchaseValue,
+                purchase_date: asset.purchaseDate,
+                notes: asset.notes,
+                last_updated: new Date().toISOString(),
+                profile_id: asset.profileId
+            })
+            .eq('id', asset.id);
+
+        if (error) throw error;
+    },
+
+    async deleteAsset(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('assets')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+    },
+
+    // --- Asset Transactions ---
+
+    async getAssetTransactions(assetId: string): Promise<AssetTransaction[]> {
+        const { data, error } = await supabase
+            .from('asset_transactions')
+            .select('*')
+            .eq('asset_id', assetId)
+            .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        return (data || []).map((t: any) => ({
+            id: t.id,
+            assetId: t.asset_id,
+            date: t.date,
+            type: t.type,
+            amount: Number(t.amount),
+            description: t.description
+        }));
+    },
+
+    async addAssetTransaction(transaction: AssetTransaction): Promise<void> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { error } = await supabase
+            .from('asset_transactions')
+            .insert({
+                id: transaction.id,
+                asset_id: transaction.assetId,
+                user_id: user.id,
+                date: transaction.date,
+                type: transaction.type,
+                amount: transaction.amount,
+                description: transaction.description
+            });
+
+        if (error) throw error;
+    },
+
+    async deleteAssetTransaction(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('asset_transactions')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
     }
 };
