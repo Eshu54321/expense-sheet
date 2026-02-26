@@ -438,7 +438,7 @@ function App() {
           {/* ... existing nav buttons ... */}
           <button
             onClick={() => setActiveTab('expenses')}
-            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'expenses' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'expenses' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
             <LayoutDashboard className="w-5 h-5" />
             <span className="font-medium">Expenses</span>
@@ -446,7 +446,7 @@ function App() {
 
           <button
             onClick={() => setActiveTab('assets')}
-            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'assets' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'assets' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
             <Table className="w-5 h-5" />
             <span className="font-medium">Assets</span>
@@ -454,7 +454,7 @@ function App() {
 
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'analytics' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'analytics' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
             <FileBarChart className="w-5 h-5" />
             <span className="font-medium">Analytics</span>
@@ -462,7 +462,7 @@ function App() {
 
           <button
             onClick={() => setActiveTab('recurring')}
-            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'recurring' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'recurring' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
             <RefreshCw className="w-5 h-5" />
             <span className="font-medium">Recurring</span>
@@ -470,7 +470,7 @@ function App() {
 
           <button
             onClick={() => setActiveTab('lenders')}
-            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'lenders' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'lenders' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
             <Users className="w-5 h-5" />
             <span className="font-medium">Lenders</span>
@@ -478,7 +478,7 @@ function App() {
 
           <button
             onClick={() => setActiveTab('settings')}
-            className={`w - full flex items - center space - x - 3 px - 4 py - 3 rounded - lg transition - colors ${activeTab === 'settings' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'} `}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
             <SettingsIcon className="w-5 h-5" />
             <span className="font-medium">Settings</span>
