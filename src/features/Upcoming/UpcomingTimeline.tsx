@@ -32,29 +32,26 @@ export const UpcomingTimeline: React.FC<UpcomingTimelineProps> = ({
             if (rule.active && rule.nextDueDate) {
                 const dueDate = new Date(rule.nextDueDate);
 
-                // Let's project recurring expenses for the next 30 days
                 let projectionDate = new Date(dueDate);
-                let count = 0;
 
-                while (projectionDate >= today && count < 3) {
-                    // We only want future or today dates in the 'Upcoming' feed
-                    items.push({
-                        id: `rec_${rule.id}_${count}`,
-                        title: rule.description || rule.category,
-                        amount: rule.amount,
-                        date: new Date(projectionDate),
-                        type: 'recurring',
-                        icon: <RefreshCw className="w-4 h-4 text-white" />,
-                        subtitle: 'VIA AUTO DEBIT'
-                    });
-
+                // Roll forward if the due date is in the past (e.g. user hasn't opened app)
+                while (projectionDate < today) {
                     if (rule.frequency === 'daily') projectionDate.setDate(projectionDate.getDate() + 1);
                     else if (rule.frequency === 'weekly') projectionDate.setDate(projectionDate.getDate() + 7);
                     else if (rule.frequency === 'monthly') projectionDate.setMonth(projectionDate.getMonth() + 1);
                     else if (rule.frequency === 'yearly') projectionDate.setFullYear(projectionDate.getFullYear() + 1);
-
-                    count++;
                 }
+
+                // Add only the single next occurrence
+                items.push({
+                    id: `rec_${rule.id}_next`,
+                    title: rule.description || rule.category,
+                    amount: rule.amount,
+                    date: new Date(projectionDate),
+                    type: 'recurring',
+                    icon: <RefreshCw className="w-4 h-4 text-white" />,
+                    subtitle: 'VIA AUTO DEBIT'
+                });
             }
         });
 
