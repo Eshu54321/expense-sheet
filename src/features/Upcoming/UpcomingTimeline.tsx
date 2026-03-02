@@ -5,6 +5,7 @@ import { useLenders } from '../../hooks/queries/useLenders';
 
 interface UpcomingTimelineProps {
     recurringExpenses: RecurringExpense[];
+    onNavigate: (tab: string) => void;
 }
 
 interface TimelineItem {
@@ -18,7 +19,8 @@ interface TimelineItem {
 }
 
 export const UpcomingTimeline: React.FC<UpcomingTimelineProps> = ({
-    recurringExpenses
+    recurringExpenses,
+    onNavigate
 }) => {
     const { data: lenders = [] } = useLenders();
     // Aggregate and sort data
@@ -201,13 +203,18 @@ export const UpcomingTimeline: React.FC<UpcomingTimelineProps> = ({
                                         </div>
 
                                         {/* Main Card details (Right side of timeline) */}
-                                        <div className="flex-1 bg-white border border-slate-900 rounded-lg p-4 shadow-sm relative">
+                                        <div
+                                            onClick={() => onNavigate(item.type === 'recurring' ? 'recurring' : 'lenders')}
+                                            className="flex-1 bg-white border border-slate-900 rounded-lg p-4 shadow-sm relative cursor-pointer hover:bg-slate-50 transition-colors group"
+                                        >
                                             {/* Left pointing triangle connecting card to bubble */}
-                                            <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 bg-white border-l border-b border-slate-900 transform rotate-45 hidden sm:block z-0"></div>
+                                            <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 bg-white border-l border-b border-slate-900 transform rotate-45 hidden sm:block z-0 group-hover:bg-slate-50 transition-colors"></div>
 
-                                            <div className="flex justify-between items-start relative z-10 bg-white">
+                                            <div className="flex justify-between items-start relative z-10 bg-transparent">
                                                 <div className="pr-4">
-                                                    <h4 className="text-[15px] font-bold text-slate-800 mb-1">{item.title}</h4>
+                                                    <h4 className="text-[15px] font-bold text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">
+                                                        {item.title}
+                                                    </h4>
                                                     <p className={`text-sm ${item.date < new Date() ? 'text-red-500 font-medium' : 'text-slate-400'}`}>
                                                         {getRelativeDateString(item.date)}
                                                     </p>

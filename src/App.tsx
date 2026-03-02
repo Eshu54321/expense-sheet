@@ -612,6 +612,7 @@ function App() {
           {activeTab === 'upcoming' && (
             <UpcomingTimeline
               recurringExpenses={recurringExpenses}
+              onNavigate={(tab) => setActiveTab(tab as TabState)}
             />
           )}
 
