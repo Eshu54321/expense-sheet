@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Expense } from '../types';
 import { X, Check, Edit2, Trash2, Plus } from 'lucide-react';
+import { useAccounts } from '../hooks/queries/useAccounts';
 
 interface ReviewParsedExpensesModalProps {
     expenses: Omit<Expense, 'id'>[];
@@ -10,6 +11,7 @@ interface ReviewParsedExpensesModalProps {
 }
 
 export const ReviewParsedExpensesModal: React.FC<ReviewParsedExpensesModalProps> = ({ expenses: initialExpenses, imagePreviewUrl, onConfirm, onCancel }) => {
+    const { data: accounts = [] } = useAccounts();
     const [expenses, setExpenses] = useState<Omit<Expense, 'id'>[]>(initialExpenses);
 
     const handleAmountChange = (index: number, value: string) => {
@@ -21,6 +23,17 @@ export const ReviewParsedExpensesModal: React.FC<ReviewParsedExpensesModalProps>
     const handleDescChange = (index: number, value: string) => {
         const newExpenses = [...expenses];
         newExpenses[index] = { ...newExpenses[index], description: value };
+        setExpenses(newExpenses);
+    };
+
+    const handlePaymentMethodChange = (index: number, value: string) => {
+        const newExpenses = [...expenses];
+        const account = accounts.find(a => a.id === value);
+        if (account) {
+            newExpenses[index] = { ...newExpenses[index], paymentMethod: account.name, accountId: account.id };
+        } else {
+            newExpenses[index] = { ...newExpenses[index], paymentMethod: value, accountId: undefined };
+        }
         setExpenses(newExpenses);
     };
 
@@ -94,6 +107,19 @@ export const ReviewParsedExpensesModal: React.FC<ReviewParsedExpensesModalProps>
                                             />
                                             <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
                                                 <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{expense.category}</span>
+                                                <select
+                                                    value={expense.accountId || expense.paymentMethod}
+                                                    onChange={(e) => handlePaymentMethodChange(i, e.target.value)}
+                                                    className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                                >
+                                                    <option value="" disabled>Account</option>
+                                                    {accounts.map(acc => (
+                                                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                                                    ))}
+                                                    {!accounts.find(a => a.name === expense.paymentMethod) && (
+                                                        <option value={expense.paymentMethod}>{expense.paymentMethod}</option>
+                                                    )}
+                                                </select>
                                             </div>
                                         </div>
 

@@ -1,0 +1,24 @@
+﻿App.tsx(3,30): error TS2307: Cannot find module './components/ExpenseTable' or its corresponding type declarations.
+App.tsx(4,30): error TS2307: Cannot find module './components/SummaryCards' or its corresponding type declarations.
+App.tsx(5,24): error TS2307: Cannot find module './components/Charts' or its corresponding type declarations.
+App.tsx(6,26): error TS2307: Cannot find module './components/SmartAdd' or its corresponding type declarations.
+App.tsx(7,25): error TS2307: Cannot find module './components/Reports' or its corresponding type declarations.
+App.tsx(8,35): error TS2307: Cannot find module './components/RecurringExpenses' or its corresponding type declarations.
+App.tsx(9,26): error TS2307: Cannot find module './components/Settings' or its corresponding type declarations.
+App.tsx(10,42): error TS2307: Cannot find module './services/geminiService' or its corresponding type declarations.
+App.tsx(11,27): error TS2307: Cannot find module './services/db' or its corresponding type declarations.
+src/components/BudgetSettings.tsx(55,61): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<Category>'.
+src/hooks/queries/useAccounts.ts(2,26): error TS2307: Cannot find module '../../services/supabase' or its corresponding type declarations.
+src/hooks/queries/useAccounts.ts(4,28): error TS2307: Cannot find module './useProfile' or its corresponding type declarations.
+src/services/googleSheetsService.ts(91,13): error TS2353: Object literal may only specify known properties, and 'spreadsheetId' does not exist in type 'SheetMetadata'.
+src/services/googleSheetsService.ts(105,33): error TS2339: Property 'spreadsheetId' does not exist on type 'SheetMetadata'.
+src/services/googleSheetsService.ts(130,33): error TS2339: Property 'spreadsheetId' does not exist on type 'SheetMetadata'.
+src/services/googleSheetsService.ts(154,33): error TS2339: Property 'spreadsheetId' does not exist on type 'SheetMetadata'.
+src/services/googleSheetsService.ts(172,33): error TS2339: Property 'spreadsheetId' does not exist on type 'SheetMetadata'.
+src/services/googleSheetsService.ts(177,43): error TS2339: Property 'expenseSheetId' does not exist on type 'SheetMetadata'.
+src/services/googleSheetsService.ts(194,33): error TS2339: Property 'spreadsheetId' does not exist on type 'SheetMetadata'.
+src/services/googleSheetsService.ts(219,33): error TS2339: Property 'spreadsheetId' does not exist on type 'SheetMetadata'.
+src/services/googleSheetsService.ts(240,33): error TS2339: Property 'spreadsheetId' does not exist on type 'SheetMetadata'.
+src/services/googleSheetsService.ts(256,33): error TS2339: Property 'spreadsheetId' does not exist on type 'SheetMetadata'.
+src/services/googleSheetsService.ts(278,33): error TS2339: Property 'spreadsheetId' does not exist on type 'SheetMetadata'.
+src/services/googleSheetsService.ts(284,33): error TS2339: Property 'spreadsheetId' does not exist on type 'SheetMetadata'.

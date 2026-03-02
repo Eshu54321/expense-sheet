@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { RecurringExpense, Lender } from '../../types';
-import { RefreshCw, Users, AlertCircle } from 'lucide-react';
+import { RefreshCw, Users, AlertCircle, CreditCard } from 'lucide-react';
 import { useLenders } from '../../hooks/queries/useLenders';
+import { useAccounts } from '../../hooks/queries/useAccounts';
 
 interface UpcomingTimelineProps {
     recurringExpenses: RecurringExpense[];
@@ -13,7 +14,7 @@ interface TimelineItem {
     title: string;
     amount: number;
     date: Date;
-    type: 'recurring' | 'debt';
+    type: 'recurring' | 'debt' | 'credit_card';
     icon: React.ReactNode;
     subtitle: string;
 }
@@ -23,6 +24,7 @@ export const UpcomingTimeline: React.FC<UpcomingTimelineProps> = ({
     onNavigate
 }) => {
     const { data: lenders = [] } = useLenders();
+    const { data: accounts = [] } = useAccounts();
     // Aggregate and sort data
     const { timelineItems, totalUpcoming, totalPaid } = useMemo(() => {
         const items: TimelineItem[] = [];
@@ -76,6 +78,32 @@ export const UpcomingTimeline: React.FC<UpcomingTimelineProps> = ({
             }
         });
 
+        // 3. Process Credit Cards (Active Balances with Billing Days)
+        accounts.forEach(account => {
+            if (account.type === 'credit_card' && account.balance > 0 && account.billing_day) {
+                const dueDate = new Date(today);
+
+                // If today is past the billing day, the bill is due next month
+                if (today.getDate() > account.billing_day) {
+                    dueDate.setMonth(dueDate.getMonth() + 1);
+                }
+
+                // Handle edge case where month doesn't have the billing day (e.g. Feb 30th -> Feb 28th)
+                const lastDayOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate();
+                dueDate.setDate(Math.min(account.billing_day, lastDayOfMonth));
+
+                items.push({
+                    id: `cc_${account.id}`,
+                    title: `${account.name} Bill`,
+                    amount: account.balance,
+                    date: dueDate,
+                    type: 'credit_card',
+                    icon: <CreditCard className="w-4 h-4 text-white" />,
+                    subtitle: 'CREDIT CARD'
+                });
+            }
+        });
+
         // Sort chronologically
         items.sort((a, b) => a.date.getTime() - b.date.getTime());
 
@@ -84,7 +112,7 @@ export const UpcomingTimeline: React.FC<UpcomingTimelineProps> = ({
         const paid = 0; // Future enhancement
 
         return { timelineItems: items, totalUpcoming: upcoming, totalPaid: paid };
-    }, [recurringExpenses, lenders]);
+    }, [recurringExpenses, lenders, accounts]);
 
 
     // Helper to format relative date strings

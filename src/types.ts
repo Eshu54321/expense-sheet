@@ -18,6 +18,17 @@ export interface Profile {
   isDefault?: boolean;
 }
 
+export interface Account {
+  id: string;
+  name: string;
+  type: 'bank_account' | 'credit_card';
+  balance: number;
+  credit_limit?: number;
+  billing_day?: number;
+  currency: string;
+  profile_id?: string;
+}
+
 export interface Expense {
   id: string;
   date: string; // YYYY-MM-DD
@@ -25,6 +36,7 @@ export interface Expense {
   category: Category | string;
   amount: number;
   paymentMethod: string;
+  accountId?: string; // UUID of an Account, optional for backwards compatibility
   profileId?: string; // Optional for backward compatibility, required for multi-user
 }
 
@@ -143,6 +155,9 @@ export interface SyncStatus {
 }
 
 export interface SheetMetadata {
+  spreadsheetId: string;
+  spreadsheetUrl: string;
+  expenseSheetId: number;
   recurringSheetId: number;
 }
 

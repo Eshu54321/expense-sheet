@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, Table, Lightbulb, Database, FileBarChart, RefreshCw, Settings as SettingsIcon, X, LogOut, Users, Tag, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Table, Lightbulb, Database, FileBarChart, RefreshCw, Settings as SettingsIcon, X, LogOut, Users, Tag, ChevronDown, CreditCard } from 'lucide-react';
 import { SummaryCards } from './components/SummaryCards';
 import { ItemRates } from './components/ItemRates';
 import { SmartAdd } from './components/SmartAdd';
@@ -11,6 +11,7 @@ import { Settings } from './components/Settings';
 import { UpcomingTimeline } from './features/Upcoming/UpcomingTimeline';
 import { Lenders } from './features/Lenders';
 import { Assets } from './features/Assets';
+import { Accounts } from './features/Accounts/Accounts';
 import { Auth } from './components/Auth';
 import { useAuth } from './hooks/useAuth';
 import { supabaseService } from './services/supabaseService';
@@ -56,7 +57,7 @@ const processRecurringExpenses = (expenses: Expense[], recurring: RecurringExpen
   return newExpenses;
 };
 
-type TabState = 'expenses' | 'recurring' | 'upcoming' | 'lenders' | 'budgets' | 'assets' | 'analytics' | 'settings';
+type TabState = 'expenses' | 'recurring' | 'upcoming' | 'lenders' | 'budgets' | 'assets' | 'analytics' | 'settings' | 'accounts';
 
 function App() {
   const { user, loading: authLoading } = useAuth();
@@ -486,6 +487,14 @@ function App() {
           </button>
 
           <button
+            onClick={() => setActiveTab('accounts')}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'accounts' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+          >
+            <CreditCard className="w-5 h-5" />
+            <span className="font-medium">Accounts</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('settings')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-green-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
@@ -543,9 +552,9 @@ function App() {
                 activeTab === 'recurring' ? 'Recurring Rules' :
                   activeTab === 'upcoming' ? 'Upcoming Timeline' :
                     activeTab === 'lenders' ? 'Lenders & Loans' :
-                      activeTab === 'budgets' ? 'Budgeting' :
-                        activeTab === 'analytics' ? 'Analytics' :
-                          activeTab === 'assets' ? 'Tracked Assets' :
+                      activeTab === 'accounts' ? 'Bank & Cards' :
+                        activeTab === 'budgets' ? 'Budgeting' :
+                          activeTab === 'analytics' ? 'Analytics' :
                             activeTab === 'settings' ? 'Settings' : 'Expenses'}
             </h2>
             <p className="text-slate-500 text-xs md:text-sm">Personal Finance Sheet • INR (₹)</p>
@@ -618,6 +627,10 @@ function App() {
 
           {activeTab === 'lenders' && (
             <Lenders />
+          )}
+
+          {activeTab === 'accounts' && (
+            <Accounts />
           )}
 
           {activeTab === 'budgets' && (
@@ -696,6 +709,14 @@ function App() {
           >
             <Users className="w-6 h-6" />
             <span className="text-[10px] font-medium">Lenders</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('accounts')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'accounts' ? 'text-green-600' : 'text-slate-400'}`}
+          >
+            <CreditCard className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Accounts</span>
           </button>
 
           <button

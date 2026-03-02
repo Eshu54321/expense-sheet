@@ -3,6 +3,7 @@ import { Trash2, Edit2, Save, X, Check } from 'lucide-react';
 import { Expense, Category, FilterConfig } from '../types';
 import { ExpenseFilters } from './ExpenseFilters';
 import { COLORS } from '../constants';
+import { useAccounts } from '../hooks/queries/useAccounts';
 
 interface ExpenseTableProps {
   expenses: Expense[];
@@ -22,6 +23,7 @@ const INITIAL_FILTERS: FilterConfig = {
 };
 
 export const ExpenseTable: React.FC<ExpenseTableProps> = ({ expenses, onDelete, onUpdate }) => {
+  const { data: accounts = [] } = useAccounts();
   const [localExpenses, setLocalExpenses] = useState<Expense[]>(expenses);
   const [filters, setFilters] = useState<FilterConfig>(INITIAL_FILTERS);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -62,6 +64,13 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({ expenses, onDelete, 
     if (key === 'amount') {
       const num = parseFloat(value);
       setEditForm({ ...editForm, [key]: isNaN(num) ? 0 : num });
+    } else if (key === 'paymentMethod') {
+      const account = accounts.find(a => a.id === value);
+      if (account) {
+        setEditForm({ ...editForm, paymentMethod: account.name, accountId: account.id });
+      } else {
+        setEditForm({ ...editForm, paymentMethod: value, accountId: undefined });
+      }
     } else {
       setEditForm({ ...editForm, [key]: value });
     }
@@ -198,12 +207,20 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({ expenses, onDelete, 
                   {/* Method */}
                   <td className="py-3 px-4 text-sm text-slate-500">
                     {isEditing ? (
-                      <input
-                        type="text"
-                        value={editForm?.paymentMethod}
+                      <select
+                        value={editForm?.accountId || editForm?.paymentMethod}
                         onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
                         className="w-full p-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                      />
+                      >
+                        <option value="" disabled>Select Account</option>
+                        {accounts.map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.name}</option>
+                        ))}
+                        {/* Fallback for legacy custom payment methods not tied to an account */}
+                        {!accounts.find(a => a.name === editForm?.paymentMethod) && (
+                          <option value={editForm?.paymentMethod}>{editForm?.paymentMethod}</option>
+                        )}
+                      </select>
                     ) : (
                       expense.paymentMethod
                     )}

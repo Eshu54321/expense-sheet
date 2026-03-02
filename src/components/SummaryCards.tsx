@@ -1,9 +1,10 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, AlertCircle, Landmark } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, AlertCircle, Landmark, CreditCard } from 'lucide-react';
 import { Expense, Budget } from '../types';
 import { useAssets } from '../hooks/queries/useAssets';
 import { useLenders } from '../hooks/queries/useLenders';
 import { useProfile } from '../contexts/ProfileContext';
+import { useAccounts } from '../hooks/queries/useAccounts';
 
 interface SummaryCardsProps {
   expenses: Expense[];
@@ -13,6 +14,7 @@ interface SummaryCardsProps {
 export const SummaryCards: React.FC<SummaryCardsProps> = ({ expenses, budgets = [] }) => {
   const { data: assets = [] } = useAssets();
   const { data: lenders = [] } = useLenders();
+  const { data: accounts = [] } = useAccounts();
   const { activeProfile } = useProfile();
 
   // Filter query data by active profile
@@ -28,6 +30,22 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ expenses, budgets = 
     if (!activeProfile) return lenders;
     return lenders.filter((l: any) => !l.profileId || l.profileId === activeProfile.id || l.profileId === 'shared');
   }, [lenders, activeProfile]);
+
+  const filteredAccounts = React.useMemo(() => {
+    if (!activeProfile) return accounts;
+    return accounts.filter((a: any) => !a.profile_id || a.profile_id === activeProfile.id);
+  }, [accounts, activeProfile]);
+
+  const accountStats = React.useMemo(() => {
+    const bankAccounts = filteredAccounts.filter(a => a.type === 'bank_account');
+    const creditCards = filteredAccounts.filter(a => a.type === 'credit_card');
+
+    return {
+      totalBankBalance: bankAccounts.reduce((sum, acc) => sum + acc.balance, 0),
+      totalCreditUsed: creditCards.reduce((sum, acc) => sum + acc.balance, 0),
+      totalCreditLimit: creditCards.reduce((sum, acc) => sum + (acc.credit_limit || 0), 0)
+    };
+  }, [filteredAccounts]);
 
   const summary = React.useMemo(() => {
     return expenses.reduce(
@@ -179,6 +197,42 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ expenses, budgets = 
           </div>
         </div>
       </div>
+
+      {/* Accounts Overview Section */}
+      {filteredAccounts.length > 0 && (
+        <div className="bg-white p-5 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-100">
+          <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center">
+            <Landmark className="w-4 h-4 mr-2 text-indigo-500" />
+            Accounts Overview
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex justify-between items-center p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-indigo-500 uppercase tracking-wider">Liquid Cash</span>
+                <span className="text-xl font-bold text-indigo-900 mt-1">₹{accountStats.totalBankBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              </div>
+              <Landmark className="w-8 h-8 text-indigo-200" />
+            </div>
+            <div className="flex justify-between items-center p-4 bg-rose-50 border border-rose-100 rounded-xl">
+              <div className="flex flex-col flex-1">
+                <span className="text-xs font-bold text-rose-500 uppercase tracking-wider">Credit Used</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-xl font-bold text-rose-900">₹{accountStats.totalCreditUsed.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  {accountStats.totalCreditLimit > 0 && (
+                    <span className="text-xs font-medium text-rose-400">/ ₹{accountStats.totalCreditLimit.toLocaleString('en-IN')}</span>
+                  )}
+                </div>
+                {accountStats.totalCreditLimit > 0 && (
+                  <div className="w-full bg-rose-200 rounded-full h-1 mt-2">
+                    <div className="bg-rose-500 h-1 rounded-full" style={{ width: `${Math.min((accountStats.totalCreditUsed / accountStats.totalCreditLimit) * 100, 100)}%` }}></div>
+                  </div>
+                )}
+              </div>
+              <CreditCard className="w-8 h-8 text-rose-200 ml-4" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Budget Progress Section */}
       {budgetProgress.length > 0 && (

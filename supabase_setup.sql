@@ -54,3 +54,34 @@ CREATE POLICY "Users can delete their own assets" ON public.assets FOR DELETE US
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS profile_id uuid references public.profiles(id) on delete set null;
 ALTER TABLE public.recurring_expenses ADD COLUMN IF NOT EXISTS profile_id uuid references public.profiles(id) on delete set null;
 ALTER TABLE public.budgets ADD COLUMN IF NOT EXISTS profile_id uuid references public.profiles(id) on delete set null;
+
+-- ==========================================
+-- Bank & Credit Card Accounts (Phase 8)
+-- ==========================================
+
+-- 4. Create Accounts Table
+CREATE TABLE IF NOT EXISTS public.accounts (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid references public.profiles(id) on delete set null,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  name text not null,
+  type text not null check (type in ('bank_account', 'credit_card')),
+  balance numeric not null default 0,
+  credit_limit numeric,
+  billing_day integer check (billing_day >= 1 and billing_day <= 31),
+  currency text default 'INR',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS for Accounts
+ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
+
+-- Account Policies
+CREATE POLICY "Users can view their own accounts" ON public.accounts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own accounts" ON public.accounts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own accounts" ON public.accounts FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own accounts" ON public.accounts FOR DELETE USING (auth.uid() = user_id);
+
+-- Update expenses table to link to accounts
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS account_id uuid references public.accounts(id) on delete set null;

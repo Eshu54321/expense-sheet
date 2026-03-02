@@ -2,11 +2,11 @@ import React, { useMemo, useState, useEffect } from 'react';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
-    AreaChart, Area, Legend
+    AreaChart, Area, Legend, LineChart, Line
 } from 'recharts';
 import { Expense } from '../types';
 import { COLORS } from '../constants';
-import { Loader2 } from 'lucide-react';
+import { useAccounts } from '../hooks/queries/useAccounts';
 
 interface ChartsProps {
     expenses: Expense[];
@@ -30,6 +30,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
+    const { data: accounts = [] } = useAccounts();
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
@@ -44,18 +45,6 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
         expenseData.forEach(e => {
             const current = map.get(e.category) || 0;
             map.set(e.category, current + e.amount);
-        });
-        return Array.from(map.entries())
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value);
-    }, [expenseData]);
-
-    const paymentMethodData = useMemo(() => {
-        const map = new Map<string, number>();
-        expenseData.forEach(e => {
-            const method = e.paymentMethod || 'Other';
-            const current = map.get(method) || 0;
-            map.set(method, current + e.amount);
         });
         return Array.from(map.entries())
             .map(([name, value]) => ({ name, value }))
@@ -80,9 +69,48 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [expenseData]);
 
-    const topExpensesData = useMemo(() => {
-        return [...expenseData].sort((a, b) => b.amount - a.amount).slice(0, 5);
-    }, [expenseData]);
+    const creditCardTrendData = useMemo(() => {
+        const creditCards = accounts.filter(a => a.type === 'credit_card');
+        if (!creditCards.length) return [];
+
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        // 1. Filter expenses to current month and where payment method is a credit card
+        const ccExpenses = expenseData.filter(e => {
+            const date = new Date(e.date);
+            if (date.getMonth() !== currentMonth || date.getFullYear() !== currentYear) return false;
+            // The expense's paymentMethod could be the account ID or the account Name depending on saving logic
+            return creditCards.some(cc => cc.id === e.paymentMethod || cc.name === e.paymentMethod);
+        });
+
+        // 2. Build a map of Dates within this month
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const map = new Map<string, Record<string, number>>();
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            const initialDayRecord: Record<string, number> = { day: i };
+            creditCards.forEach(cc => initialDayRecord[cc.name] = 0);
+            map.set(dateStr, initialDayRecord);
+        }
+
+        // 3. Accumulate expenses
+        ccExpenses.forEach(e => {
+            const dayRecord = map.get(e.date);
+            if (dayRecord) {
+                // Determine which CC this expense belongs to
+                const matchedCard = creditCards.find(cc => cc.id === e.paymentMethod || cc.name === e.paymentMethod);
+                if (matchedCard) {
+                    dayRecord[matchedCard.name] += e.amount;
+                }
+            }
+        });
+
+        // 4. Return array format for Recharts
+        return Array.from(map.values());
+    }, [expenseData, accounts]);
 
     const totalExpense = useMemo(() => expenseData.reduce((sum, item) => sum + item.amount, 0), [expenseData]);
 
@@ -202,79 +230,45 @@ export const Charts: React.FC<ChartsProps> = ({ expenses }) => {
                 </div>
             </div>
 
-            {/* Row 2: Payment Methods & Top Expenses */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Row 2: Credit Card Trends */}
+            {creditCardTrendData.length > 0 && (
+                <div className="bg-white p-6 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100">
+                    <h3 className="text-lg font-bold text-slate-800 tracking-tight mb-1">Credit Card Spends</h3>
+                    <p className="text-sm text-slate-400 font-medium mb-6">Current Month Trends</p>
 
-                {/* Payment Method Pie Chart */}
-                <div className="bg-white p-6 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 tracking-tight mb-1">Payment Mode</h3>
-                    <p className="text-sm text-slate-400 font-medium mb-4">Usage</p>
-
-                    <div className="h-[200px] w-full relative flex-shrink-0">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                            <PieChart>
-                                <Pie
-                                    data={paymentMethodData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={0}
-                                    outerRadius={80}
-                                    paddingAngle={2}
-                                    dataKey="value"
-                                >
-                                    {paymentMethodData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} stroke="none" />
-                                    ))}
-                                </Pie>
-                                <Tooltip content={<CustomTooltip />} />
-                                <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px' }} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Top Expenses Bar Chart - Takes up 2 cols */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100">
-                    <h3 className="text-lg font-bold text-slate-800 tracking-tight mb-6">Top Transactions</h3>
-                    <div className="h-[200px] w-full">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                            <BarChart
-                                data={topExpensesData}
-                                layout="vertical"
-                                margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
-                                barSize={20}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                                <XAxis type="number" hide />
-                                <YAxis
-                                    type="category"
-                                    dataKey="description"
-                                    width={180}
-                                    tick={{ fontSize: 13, fill: '#475569', fontWeight: 500 }}
-                                    tickLine={false}
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={creditCardTrendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis
+                                    dataKey="day"
                                     axisLine={false}
-                                    tickFormatter={(value) => value.length > 22 ? `${value.substring(0, 22)}...` : value}
+                                    tickLine={false}
+                                    tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 500 }}
                                 />
-                                <Tooltip
-                                    cursor={{ fill: '#f8fafc', radius: 4 }}
-                                    content={<CustomTooltip />}
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 500 }}
                                 />
-                                <Bar
-                                    dataKey="amount"
-                                    radius={[0, 6, 6, 0]}
-                                    background={{ fill: '#f8fafc', radius: 6 }}
-                                >
-                                    {
-                                        topExpensesData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={index === 0 ? '#6366f1' : '#818cf8'} fillOpacity={index === 0 ? 1 : 0.7} />
-                                        ))
-                                    }
-                                </Bar>
-                            </BarChart>
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                {accounts.filter(a => a.type === 'credit_card').map((cc, idx) => (
+                                    <Line
+                                        key={cc.id}
+                                        type="monotone"
+                                        dataKey={cc.name}
+                                        stroke={COLORS[idx % COLORS.length]}
+                                        strokeWidth={3}
+                                        dot={{ r: 4, strokeWidth: 0, fill: COLORS[idx % COLORS.length] }}
+                                        activeDot={{ r: 6 }}
+                                    />
+                                ))}
+                            </LineChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };
