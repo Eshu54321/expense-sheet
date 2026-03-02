@@ -54,7 +54,7 @@ export const AddLenderModal: React.FC<AddLenderModalProps> = ({ onClose }) => {
                             required
                             value={newLenderName}
                             onChange={e => setNewLenderName(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                            className="text-slate-900 bg-white w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                             placeholder="e.g. John Doe"
                         />
                     </div>
@@ -64,7 +64,7 @@ export const AddLenderModal: React.FC<AddLenderModalProps> = ({ onClose }) => {
                             type="text"
                             value={newLenderContact}
                             onChange={e => setNewLenderContact(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                            className="text-slate-900 bg-white w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                             placeholder="Phone or Email"
                         />
                     </div>
@@ -75,7 +75,7 @@ export const AddLenderModal: React.FC<AddLenderModalProps> = ({ onClose }) => {
                             <select
                                 value={newLoanType}
                                 onChange={e => setNewLoanType(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+                                className="text-slate-900 bg-white w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
                             >
                                 <option>Personal Loan</option>
                                 <option>Home Loan</option>
@@ -91,7 +91,7 @@ export const AddLenderModal: React.FC<AddLenderModalProps> = ({ onClose }) => {
                                 type="date"
                                 value={newStartDate}
                                 onChange={e => setNewStartDate(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                className="text-slate-900 bg-white w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                             />
                         </div>
                     </div>
@@ -104,7 +104,7 @@ export const AddLenderModal: React.FC<AddLenderModalProps> = ({ onClose }) => {
                                 step="0.01"
                                 value={newInterestRate}
                                 onChange={e => setNewInterestRate(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                className="text-slate-900 bg-white w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                                 placeholder="e.g. 10.5"
                             />
                         </div>
@@ -115,7 +115,7 @@ export const AddLenderModal: React.FC<AddLenderModalProps> = ({ onClose }) => {
                                 step="0.01"
                                 value={newEmiAmount}
                                 onChange={e => setNewEmiAmount(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                className="text-slate-900 bg-white w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                                 placeholder="e.g. 5000"
                             />
                         </div>

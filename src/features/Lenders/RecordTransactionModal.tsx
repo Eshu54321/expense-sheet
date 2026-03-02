@@ -68,7 +68,7 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({ 
                             step="0.01"
                             value={transAmount}
                             onChange={e => setTransAmount(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                            className="text-slate-900 bg-white w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                             placeholder="0.00"
                         />
                     </div>
@@ -80,7 +80,7 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({ 
                             required
                             value={transDate}
                             onChange={e => setTransDate(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                            className="text-slate-900 bg-white w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                         />
                     </div>
 
@@ -90,7 +90,7 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({ 
                             type="text"
                             value={transDesc}
                             onChange={e => setTransDesc(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                            className="text-slate-900 bg-white w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                             placeholder="e.g. Emergency Fund"
                         />
                     </div>

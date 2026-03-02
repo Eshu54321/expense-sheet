@@ -138,7 +138,7 @@ export const RecurringExpenses: React.FC<RecurringExpensesProps> = ({
                                 placeholder="e.g. Netflix Subscription"
                                 value={newExpense.description}
                                 onChange={e => setNewExpense({ ...newExpense, description: e.target.value })}
-                                className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className="text-slate-900 bg-white w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                             />
                         </div>
 
@@ -150,7 +150,7 @@ export const RecurringExpenses: React.FC<RecurringExpensesProps> = ({
                                 placeholder="0.00"
                                 value={newExpense.amount}
                                 onChange={e => setNewExpense({ ...newExpense, amount: Number(e.target.value) })}
-                                className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className="text-slate-900 bg-white w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                             />
                             <p className="text-[10px] text-slate-400 mt-1">Use negative for income (e.g. -50000)</p>
                         </div>
@@ -160,7 +160,7 @@ export const RecurringExpenses: React.FC<RecurringExpensesProps> = ({
                             <select
                                 value={newExpense.category}
                                 onChange={e => setNewExpense({ ...newExpense, category: e.target.value })}
-                                className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className="text-slate-900 bg-white w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                             >
                                 {Object.values(Category).map(c => (
                                     <option key={c} value={c}>{c}</option>
@@ -173,7 +173,7 @@ export const RecurringExpenses: React.FC<RecurringExpensesProps> = ({
                             <select
                                 value={newExpense.frequency}
                                 onChange={e => setNewExpense({ ...newExpense, frequency: e.target.value as Frequency })}
-                                className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className="text-slate-900 bg-white w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                             >
                                 <option value="daily">Daily</option>
                                 <option value="weekly">Weekly</option>
@@ -189,7 +189,7 @@ export const RecurringExpenses: React.FC<RecurringExpensesProps> = ({
                                 required
                                 value={newExpense.nextDueDate}
                                 onChange={e => setNewExpense({ ...newExpense, nextDueDate: e.target.value })}
-                                className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className="text-slate-900 bg-white w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                             />
                         </div>
 

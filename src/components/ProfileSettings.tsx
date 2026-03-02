@@ -154,7 +154,7 @@ export const ProfileSettings: React.FC = () => {
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
                                     placeholder="Profile Name"
-                                    className="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                    className="text-slate-900 bg-white w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                                     autoFocus
                                 />
                                 <div>
@@ -226,7 +226,7 @@ export const ProfileSettings: React.FC = () => {
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
                                 placeholder="New Profile Name"
-                                className="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                className="text-slate-900 bg-white w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                                 autoFocus
                             />
                             <div>
